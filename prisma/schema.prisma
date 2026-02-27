@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CameraStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AlertType {
+  TEMPERATURE
+  GAP
+}
+
+enum GapDirection {
+  RISE
+  DROP
+  BOTH
+}
+
+model Camera {
+  cameraId  String       @id @map("camera_id")
+  name      String
+  location  String
+  status    CameraStatus @default(ACTIVE)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
+
+  readings Reading[]
+  alerts   Alert[]
+
+  @@map("cameras")
+}
+
+model Reading {
+  id        BigInt   @id @default(autoincrement())
+  cameraId  String   @map("camera_id")
+  celsius   Float    @db.Real
+  timestamp DateTime @db.Timestamptz()
+
+  camera Camera @relation(fields: [cameraId], references: [cameraId], onDelete: Cascade)
+
+  @@index([cameraId, timestamp])
+  @@map("readings")
+}
+
+model TemperatureThreshold {
+  id              String  @id @default(cuid())
+  name            String
+  cameraId        String? @map("camera_id")
+  minCelsius      Float?  @map("min_celsius") @db.Real
+  maxCelsius      Float?  @map("max_celsius") @db.Real
+  cooldownMinutes Int     @default(5) @map("cooldown_minutes")
+  notifyEmail     Boolean @default(false) @map("notify_email")
+  enabled         Boolean @default(true)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("temperature_thresholds")
+}
+
+model GapThreshold {
+  id              String       @id @default(cuid())
+  name            String
+  cameraId        String?      @map("camera_id")
+  intervalMinutes Int          @map("interval_minutes")
+  maxGapCelsius   Float        @map("max_gap_celsius") @db.Real
+  direction       GapDirection @default(BOTH)
+  cooldownMinutes Int          @default(5) @map("cooldown_minutes")
+  notifyEmail     Boolean      @default(false) @map("notify_email")
+  enabled         Boolean      @default(true)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("gap_thresholds")
+}
+
+model Alert {
+  id             String    @id @default(cuid())
+  cameraId       String    @map("camera_id")
+  type           AlertType
+  message        String
+  celsius        Float     @db.Real
+  thresholdValue Float?    @map("threshold_value") @db.Real
+  acknowledged   Boolean   @default(false)
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz()
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  camera Camera @relation(fields: [cameraId], references: [cameraId], onDelete: Cascade)
+
+  @@index([cameraId, createdAt])
+  @@index([acknowledged])
+  @@map("alerts")
+}

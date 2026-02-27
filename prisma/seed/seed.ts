@@ -1,6 +1,6 @@
 import { PrismaClient } from "../../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { cameraSeedData } from "./camera-seed-data";
+import { cameraSeedData, groupSeedData } from "./camera-seed-data";
 import { generateReadingsBatch } from "./reading-generator";
 import "dotenv/config";
 
@@ -21,16 +21,30 @@ async function main() {
       await prisma.gapThreshold.deleteMany();
       await prisma.temperatureThreshold.deleteMany();
       await prisma.camera.deleteMany();
+      await prisma.group.deleteMany();
       console.log("Cleared.");
     }
 
-    // Upsert cameras
+    // Create groups
+    console.log(`Creating ${groupSeedData.length} groups...`);
+    const groupMap = new Map<string, string>();
+    for (const grp of groupSeedData) {
+      const group = await prisma.group.upsert({
+        where: { id: grp.name.toLowerCase().replace(/\s+/g, "-") },
+        update: {},
+        create: { id: grp.name.toLowerCase().replace(/\s+/g, "-"), name: grp.name, color: grp.color },
+      });
+      groupMap.set(grp.name, group.id);
+    }
+
+    // Upsert cameras with group assignment
     console.log(`Upserting ${cameraSeedData.length} cameras...`);
     for (const cam of cameraSeedData) {
+      const groupId = groupMap.get(cam.groupName);
       await prisma.camera.upsert({
         where: { cameraId: cam.cameraId },
-        update: { name: cam.name, location: cam.location },
-        create: { cameraId: cam.cameraId, name: cam.name, location: cam.location },
+        update: { name: cam.name, location: cam.location, groupId },
+        create: { cameraId: cam.cameraId, name: cam.name, location: cam.location, groupId },
       });
     }
 

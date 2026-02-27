@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_READINGS_LIMIT } from "@/lib/constants";
 import type { ReadingInput } from "@/lib/validate";
+import { evaluateReading } from "@/services/alert-evaluation-service";
 
 export interface QueryReadingsParams {
   cameraId?: string;
@@ -11,6 +12,10 @@ export interface QueryReadingsParams {
 
 export interface LatestReading {
   cameraId: string;
+  name: string;
+  location: string;
+  status: "ACTIVE" | "INACTIVE";
+  groupId: string | null;
   id: string;
   celsius: number;
   timestamp: Date;
@@ -28,6 +33,15 @@ export async function ingestReadings(readings: ReadingInput[]) {
     data,
     skipDuplicates: false,
   });
+
+  // Evaluate each reading against thresholds — never fails ingestion
+  try {
+    await Promise.all(
+      data.map((r) => evaluateReading(r.cameraId, r.celsius, r.timestamp))
+    );
+  } catch (err) {
+    console.error("[reading-service] Alert evaluation error:", err);
+  }
 
   return { inserted: result.count };
 }
@@ -59,20 +73,44 @@ export async function queryReadings(params: QueryReadingsParams) {
 /** Get the most recent reading per camera using raw SQL for efficiency. */
 export async function getLatestReadings(): Promise<LatestReading[]> {
   const rows = await prisma.$queryRaw<
-    Array<{ camera_id: string; id: bigint; celsius: number; timestamp: Date }>
+    Array<{
+      camera_id: string;
+      name: string;
+      location: string;
+      status: "ACTIVE" | "INACTIVE";
+      group_id: string | null;
+      id: bigint;
+      celsius: number;
+      timestamp: Date;
+    }>
   >`
-    SELECT DISTINCT ON (camera_id)
-      camera_id,
-      id,
-      celsius,
-      timestamp
-    FROM readings
-    ORDER BY camera_id, timestamp DESC
+    SELECT DISTINCT ON (c.camera_id)
+      c.camera_id,
+      c.name,
+      c.location,
+      c.status,
+      c.group_id,
+      r.id,
+      r.celsius,
+      r.timestamp
+    FROM cameras c
+    LEFT JOIN LATERAL (
+      SELECT id, celsius, timestamp
+      FROM readings
+      WHERE camera_id = c.camera_id
+      ORDER BY timestamp DESC
+      LIMIT 1
+    ) r ON true
+    ORDER BY c.camera_id
   `;
 
   return rows.map((r) => ({
     cameraId: r.camera_id,
-    id: r.id.toString(),
+    name: r.name,
+    location: r.location,
+    status: r.status,
+    groupId: r.group_id,
+    id: r.id?.toString() ?? "",
     celsius: r.celsius,
     timestamp: r.timestamp,
   }));

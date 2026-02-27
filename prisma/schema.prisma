@@ -28,13 +28,28 @@ model Camera {
   name      String
   location  String
   status    CameraStatus @default(ACTIVE)
+  groupId   String?      @map("group_id")
+  group     Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
 
   readings Reading[]
   alerts   Alert[]
 
+  @@index([groupId])
   @@map("cameras")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  cameras Camera[]
+
+  @@map("groups")
 }
 
 model Reading {

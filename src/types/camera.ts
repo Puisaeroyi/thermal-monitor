@@ -3,6 +3,12 @@ export interface Camera {
   name: string;
   location: string;
   status: "ACTIVE" | "INACTIVE";
+  groupId: string | null;
+  group?: {
+    id: string;
+    name: string;
+    color: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

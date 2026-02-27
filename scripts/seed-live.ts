@@ -1,11 +1,8 @@
-import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import "dotenv/config";
+import { ingestReadings } from "../src/services/reading-service";
+import type { ReadingInput } from "../src/lib/validate";
 import { cameraSeedData } from "../prisma/seed/camera-seed-data";
 import { generateReading } from "../prisma/seed/reading-generator";
-import "dotenv/config";
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter });
 
 let running = true;
 
@@ -16,17 +13,17 @@ process.on("SIGINT", () => {
 
 async function tick() {
   const now = new Date();
-  const data = cameraSeedData.map((cam) => ({
+  const readings: ReadingInput[] = cameraSeedData.map((cam) => ({
     cameraId: cam.cameraId,
     celsius: generateReading(cam, now),
-    timestamp: now,
+    timestamp: now.toISOString(),
   }));
 
-  await prisma.reading.createMany({ data });
+  await ingestReadings(readings);
 
-  const avgTemp = data.reduce((s, d) => s + d.celsius, 0) / data.length;
+  const avgTemp = readings.reduce((s, d) => s + d.celsius, 0) / readings.length;
   console.log(
-    `[${now.toLocaleTimeString()}] Inserted ${data.length} readings (avg: ${avgTemp.toFixed(1)}C)`
+    `[${now.toLocaleTimeString()}] Inserted ${readings.length} readings (avg: ${avgTemp.toFixed(1)}C)`
   );
 }
 
@@ -39,7 +36,6 @@ async function main() {
     // Wait remaining time to hit 5s interval
     if (running) await new Promise((r) => setTimeout(r, Math.max(0, 5000 - elapsed)));
   }
-  await prisma.$disconnect();
   console.log("Live seeder stopped.");
 }
 

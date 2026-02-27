@@ -5,6 +5,7 @@ export interface CameraInput {
   name: string;
   location: string;
   status?: "ACTIVE" | "INACTIVE";
+  groupId?: string | null;
 }
 
 export interface ReadingInput {
@@ -70,6 +71,7 @@ export function validateCameraInput(
     name: d.name as string,
     location: d.location as string,
     status: d.status as "ACTIVE" | "INACTIVE" | undefined,
+    groupId: d.groupId as string | null | undefined,
   };
 }
 

@@ -4,6 +4,7 @@ import type {
   TemperatureThresholdInput,
   GapThresholdInput,
 } from "@/lib/validate";
+import { thresholdCache } from "@/services/threshold-cache";
 
 // ─── Temperature Thresholds ───────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ export async function getTemperatureThreshold(id: string) {
 export async function createTemperatureThreshold(
   input: TemperatureThresholdInput
 ) {
-  return prisma.temperatureThreshold.create({
+  const result = await prisma.temperatureThreshold.create({
     data: {
       name: input.name,
       cameraId: input.cameraId ?? null,
@@ -31,13 +32,15 @@ export async function createTemperatureThreshold(
       enabled: input.enabled ?? true,
     },
   });
+  thresholdCache.invalidate();
+  return result;
 }
 
 export async function updateTemperatureThreshold(
   id: string,
   input: Partial<TemperatureThresholdInput>
 ) {
-  return prisma.temperatureThreshold.update({
+  const result = await prisma.temperatureThreshold.update({
     where: { id },
     data: {
       ...(input.name !== undefined && { name: input.name }),
@@ -51,10 +54,14 @@ export async function updateTemperatureThreshold(
       ...(input.enabled !== undefined && { enabled: input.enabled }),
     },
   });
+  thresholdCache.invalidate();
+  return result;
 }
 
 export async function deleteTemperatureThreshold(id: string) {
-  return prisma.temperatureThreshold.delete({ where: { id } });
+  const result = await prisma.temperatureThreshold.delete({ where: { id } });
+  thresholdCache.invalidate();
+  return result;
 }
 
 // ─── Gap Thresholds ───────────────────────────────────────────────────────────
@@ -70,7 +77,7 @@ export async function getGapThreshold(id: string) {
 }
 
 export async function createGapThreshold(input: GapThresholdInput) {
-  return prisma.gapThreshold.create({
+  const result = await prisma.gapThreshold.create({
     data: {
       name: input.name,
       cameraId: input.cameraId ?? null,
@@ -84,13 +91,15 @@ export async function createGapThreshold(input: GapThresholdInput) {
       enabled: input.enabled ?? true,
     },
   });
+  thresholdCache.invalidate();
+  return result;
 }
 
 export async function updateGapThreshold(
   id: string,
   input: Partial<GapThresholdInput>
 ) {
-  return prisma.gapThreshold.update({
+  const result = await prisma.gapThreshold.update({
     where: { id },
     data: {
       ...(input.name !== undefined && { name: input.name }),
@@ -111,8 +120,12 @@ export async function updateGapThreshold(
       ...(input.enabled !== undefined && { enabled: input.enabled }),
     },
   });
+  thresholdCache.invalidate();
+  return result;
 }
 
 export async function deleteGapThreshold(id: string) {
-  return prisma.gapThreshold.delete({ where: { id } });
+  const result = await prisma.gapThreshold.delete({ where: { id } });
+  thresholdCache.invalidate();
+  return result;
 }

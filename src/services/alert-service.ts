@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AlertType } from "@/generated/prisma/client";
 import { ALERTS_PAGE_SIZE } from "@/lib/constants";
+import { sendAlertEmail } from "@/services/email-service";
 
 export interface CreateAlertInput {
   cameraId: string;
@@ -8,6 +9,8 @@ export interface CreateAlertInput {
   message: string;
   celsius: number;
   thresholdValue?: number | null;
+  notifyEmail?: boolean;
+  thresholdId?: string;
 }
 
 export interface ListAlertsParams {
@@ -21,7 +24,7 @@ export interface ListAlertsParams {
 }
 
 export async function createAlert(input: CreateAlertInput) {
-  return prisma.alert.create({
+  const alert = await prisma.alert.create({
     data: {
       cameraId: input.cameraId,
       type: input.type as AlertType,
@@ -29,7 +32,25 @@ export async function createAlert(input: CreateAlertInput) {
       celsius: input.celsius,
       thresholdValue: input.thresholdValue ?? null,
     },
+    include: { camera: { select: { name: true } } },
   });
+
+  // Fire-and-forget email notification when threshold has notifyEmail enabled
+  if (input.notifyEmail) {
+    sendAlertEmail({
+      cameraId: input.cameraId,
+      cameraName: alert.camera?.name ?? input.cameraId,
+      type: input.type,
+      message: input.message,
+      celsius: input.celsius,
+      thresholdValue: input.thresholdValue,
+      triggeredAt: alert.createdAt,
+    }).catch((err) =>
+      console.error("[alert-service] Email dispatch failed:", err)
+    );
+  }
+
+  return alert;
 }
 
 export async function listAlerts(params: ListAlertsParams = {}) {

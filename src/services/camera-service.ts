@@ -5,12 +5,30 @@ import type { CameraInput } from "@/lib/validate";
 export async function listCameras() {
   return prisma.camera.findMany({
     orderBy: { cameraId: "asc" },
+    include: {
+      group: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
+      },
+    },
   });
 }
 
 export async function getCamera(cameraId: string) {
   const camera = await prisma.camera.findUnique({
     where: { cameraId },
+    include: {
+      group: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
+      },
+    },
   });
   return camera;
 }
@@ -22,6 +40,7 @@ export async function createCamera(input: CameraInput) {
       name: input.name,
       location: input.location,
       status: input.status ? (input.status as CameraStatus) : CameraStatus.ACTIVE,
+      groupId: input.groupId || null,
     },
   });
 }
@@ -38,6 +57,7 @@ export async function updateCamera(
       ...(input.status !== undefined && {
         status: input.status as CameraStatus,
       }),
+      ...(input.groupId !== undefined && { groupId: input.groupId }),
     },
   });
 }

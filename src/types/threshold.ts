@@ -2,6 +2,7 @@ export interface TemperatureThreshold {
   id: string;
   name: string;
   cameraId: string | null;
+  groupId: string | null;
   minCelsius: number | null;
   maxCelsius: number | null;
   cooldownMinutes: number;
@@ -17,6 +18,7 @@ export interface GapThreshold {
   id: string;
   name: string;
   cameraId: string | null;
+  groupId: string | null;
   intervalMinutes: number;
   maxGapCelsius: number;
   direction: GapDirection;

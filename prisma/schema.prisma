@@ -68,6 +68,7 @@ model TemperatureThreshold {
   id              String  @id @default(cuid())
   name            String
   cameraId        String? @map("camera_id")
+  groupId         String? @map("group_id")
   minCelsius      Float?  @map("min_celsius") @db.Real
   maxCelsius      Float?  @map("max_celsius") @db.Real
   cooldownMinutes Int     @default(5) @map("cooldown_minutes")
@@ -83,6 +84,7 @@ model GapThreshold {
   id              String       @id @default(cuid())
   name            String
   cameraId        String?      @map("camera_id")
+  groupId         String?      @map("group_id")
   intervalMinutes Int          @map("interval_minutes")
   maxGapCelsius   Float        @map("max_gap_celsius") @db.Real
   direction       GapDirection @default(BOTH)

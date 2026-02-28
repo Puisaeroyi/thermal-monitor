@@ -1,27 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TemperatureThreshold, GapDirection } from "@/types/threshold";
+import { TemperatureThreshold, GapThreshold } from "@/types/threshold";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TemperatureThresholdForm } from "@/components/settings/temperature-threshold-form";
 import { GapThresholdForm } from "@/components/settings/gap-threshold-form";
 import { ThresholdLists } from "@/components/settings/threshold-lists";
 import { GroupManagement } from "@/components/settings/group-management";
-
-interface GapThreshold {
-  id: string;
-  name: string;
-  cameraId: string | null;
-  intervalMinutes: number;
-  maxGapCelsius: number;
-  direction: GapDirection;
-  cooldownMinutes: number;
-  notifyEmail: boolean;
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface Group {
   id: string;

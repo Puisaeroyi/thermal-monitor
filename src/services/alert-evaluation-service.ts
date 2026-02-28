@@ -12,13 +12,20 @@ import { createAlert } from "@/services/alert-service";
 export async function evaluateReading(
   cameraId: string,
   celsius: number,
-  timestamp: Date
+  timestamp: Date,
+  cameraGroupId?: string | null
 ): Promise<void> {
   try {
     // ── Temperature thresholds ───────────────────────────────────────────────
     const tempThresholds = await thresholdCache.getTemperatureThresholds();
     const applicableTemp = tempThresholds.filter(
-      (t) => t.cameraId === null || t.cameraId === cameraId
+      (t) =>
+        // Global: no camera or group scope
+        (t.cameraId === null && t.groupId === null) ||
+        // Camera-specific
+        t.cameraId === cameraId ||
+        // Group-scoped: camera belongs to this group
+        (t.groupId !== null && t.groupId === cameraGroupId)
     );
 
     for (const t of applicableTemp) {
@@ -51,7 +58,10 @@ export async function evaluateReading(
     // ── Gap thresholds ───────────────────────────────────────────────────────
     const gapThresholds = await thresholdCache.getGapThresholds();
     const applicableGap = gapThresholds.filter(
-      (t) => t.cameraId === null || t.cameraId === cameraId
+      (t) =>
+        (t.cameraId === null && t.groupId === null) ||
+        t.cameraId === cameraId ||
+        (t.groupId !== null && t.groupId === cameraGroupId)
     );
 
     for (const t of applicableGap) {

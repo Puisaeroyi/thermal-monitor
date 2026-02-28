@@ -63,9 +63,15 @@ export function TemperatureThresholdForm({
 
   useEffect(() => {
     if (threshold) {
+      let scope = "all";
+      if (threshold.groupId) {
+        scope = "group-" + threshold.groupId;
+      } else if (threshold.cameraId) {
+        scope = "camera-" + threshold.cameraId;
+      }
       setForm({
         name: threshold.name,
-        scope: threshold.cameraId ? "camera-" + threshold.cameraId : "all",
+        scope,
         minCelsius: threshold.minCelsius?.toString() ?? "",
         maxCelsius: threshold.maxCelsius?.toString() ?? "",
         cooldownMinutes: threshold.cooldownMinutes.toString(),
@@ -85,7 +91,7 @@ export function TemperatureThresholdForm({
     const minCelsius = form.minCelsius ? parseFloat(form.minCelsius) : null;
     const maxCelsius = form.maxCelsius ? parseFloat(form.maxCelsius) : null;
 
-    if (!minCelsius && !maxCelsius) {
+    if (minCelsius === null && maxCelsius === null) {
       setError("At least min or max temperature is required");
       setSubmitting(false);
       return;
@@ -96,14 +102,21 @@ export function TemperatureThresholdForm({
         ? `/api/thresholds/temperature/${threshold!.id}`
         : "/api/thresholds/temperature";
       const method = isEdit ? "PUT" : "POST";
+      const isGroup = form.scope.startsWith("group-");
       const body = {
         name: form.name,
-        cameraId: form.scope === "all" ? null : form.scope.replace(/^group-/, ""),
+        cameraId: null as string | null,
+        groupId: null as string | null,
         minCelsius,
         maxCelsius,
         cooldownMinutes: parseInt(form.cooldownMinutes, 10),
         enabled: form.enabled,
       };
+      if (isGroup) {
+        body.groupId = form.scope.replace(/^group-/, "");
+      } else if (form.scope !== "all") {
+        body.cameraId = form.scope.replace(/^camera-/, "");
+      }
 
       const res = await fetch(url, {
         method,

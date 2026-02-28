@@ -34,10 +34,27 @@ export async function ingestReadings(readings: ReadingInput[]) {
     skipDuplicates: false,
   });
 
+  // Look up camera group memberships for scoped threshold evaluation
+  let cameraGroupMap: Record<string, string | null> = {};
+  try {
+    const cameraIds = [...new Set(data.map((r) => r.cameraId))];
+    const cameras = await prisma.camera.findMany({
+      where: { cameraId: { in: cameraIds } },
+      select: { cameraId: true, groupId: true },
+    });
+    cameraGroupMap = Object.fromEntries(
+      cameras.map((c) => [c.cameraId, c.groupId])
+    );
+  } catch (err) {
+    console.error("[reading-service] Camera group lookup error:", err);
+  }
+
   // Evaluate each reading against thresholds — never fails ingestion
   try {
     await Promise.all(
-      data.map((r) => evaluateReading(r.cameraId, r.celsius, r.timestamp))
+      data.map((r) =>
+        evaluateReading(r.cameraId, r.celsius, r.timestamp, cameraGroupMap[r.cameraId])
+      )
     );
   } catch (err) {
     console.error("[reading-service] Alert evaluation error:", err);

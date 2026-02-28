@@ -38,7 +38,7 @@ const CameraCard = React.memo(function CameraCard({
   unit,
 }: CameraCardProps) {
   const router = useRouter();
-  const status = getTemperatureColor(camera.celsius, thresholds);
+  const status = getTemperatureColor(camera.celsius, thresholds, camera.cameraId, camera.groupId);
 
   function handleClick() {
     router.push(`/cameras/${camera.cameraId}`);

@@ -5,7 +5,7 @@ export type TemperatureStatus = "normal" | "warning" | "danger" | "inactive";
 
 /** Convert Celsius to Fahrenheit, rounded to 1 decimal */
 export function celsiusToFahrenheit(c: number): number {
-  return Math.round((c * 9) / 5 + 32 * 10) / 10;
+  return Math.round((c * 9 / 5 + 32) * 10) / 10;
 }
 
 /** Format temperature value with degree symbol and unit */
@@ -21,15 +21,27 @@ export function formatTemperature(celsius: number, unit: "C" | "F"): string {
  * Determine temperature status based on thresholds.
  * Returns 'inactive' if celsius is null, 'danger' if above maxCelsius,
  * 'warning' approaching max, 'normal' otherwise.
+ * Filters thresholds by scope: global, group-specific, or camera-specific.
  */
 export function getTemperatureColor(
   celsius: number | null,
-  thresholds: TemperatureThreshold[]
+  thresholds: TemperatureThreshold[],
+  cameraId?: string,
+  groupId?: string | null
 ): TemperatureStatus {
   if (celsius === null) return "inactive";
 
-  // Find the most relevant threshold (smallest range that applies)
-  const applicable = thresholds.filter((t) => t.enabled);
+  // Filter thresholds by enabled status AND scope
+  const applicable = thresholds.filter((t) => {
+    if (!t.enabled) return false;
+    // Global threshold (no camera or group scope)
+    if (t.cameraId === null && t.groupId === null) return true;
+    // Camera-specific
+    if (t.cameraId !== null && t.cameraId === cameraId) return true;
+    // Group-scoped
+    if (t.groupId !== null && t.groupId === groupId) return true;
+    return false;
+  });
 
   let isDanger = false;
   let isWarning = false;

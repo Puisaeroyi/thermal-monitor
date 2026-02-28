@@ -64,9 +64,15 @@ export function GapThresholdForm({
 
   useEffect(() => {
     if (threshold) {
+      let scope = "all";
+      if (threshold.groupId) {
+        scope = "group-" + threshold.groupId;
+      } else if (threshold.cameraId) {
+        scope = "camera-" + threshold.cameraId;
+      }
       setForm({
         name: threshold.name,
-        scope: threshold.cameraId ? "camera-" + threshold.cameraId : "all",
+        scope,
         intervalMinutes: threshold.intervalMinutes.toString(),
         maxGapCelsius: threshold.maxGapCelsius.toString(),
         direction: threshold.direction,
@@ -89,15 +95,22 @@ export function GapThresholdForm({
         ? `/api/thresholds/gap/${threshold!.id}`
         : "/api/thresholds/gap";
       const method = isEdit ? "PUT" : "POST";
+      const isGroup = form.scope.startsWith("group-");
       const body = {
         name: form.name,
-        cameraId: form.scope === "all" ? null : form.scope.replace(/^group-/, ""),
+        cameraId: null as string | null,
+        groupId: null as string | null,
         intervalMinutes: parseInt(form.intervalMinutes, 10),
         maxGapCelsius: parseFloat(form.maxGapCelsius),
         direction: form.direction,
         cooldownMinutes: parseInt(form.cooldownMinutes, 10),
         enabled: form.enabled,
       };
+      if (isGroup) {
+        body.groupId = form.scope.replace(/^group-/, "");
+      } else if (form.scope !== "all") {
+        body.cameraId = form.scope.replace(/^camera-/, "");
+      }
 
       const res = await fetch(url, {
         method,

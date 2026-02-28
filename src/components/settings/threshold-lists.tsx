@@ -1,6 +1,6 @@
 "use client";
 
-import { TemperatureThreshold, GapDirection } from "@/types/threshold";
+import { TemperatureThreshold, GapThreshold } from "@/types/threshold";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
@@ -43,20 +43,6 @@ interface ThresholdListsProps {
   onToggleGap: (id: string, enabled: boolean) => void;
 }
 
-interface GapThreshold {
-  id: string;
-  name: string;
-  cameraId: string | null;
-  intervalMinutes: number;
-  maxGapCelsius: number;
-  direction: GapDirection;
-  cooldownMinutes: number;
-  notifyEmail: boolean;
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 /** Displays temperature and gap thresholds in tabbed lists with actions. */
 export function ThresholdLists({
   tempThresholds,
@@ -76,12 +62,13 @@ export function ThresholdLists({
     name: string;
   }>({ open: false, type: null, id: "", name: "" });
 
-  const getScopeName = (cameraId: string | null) => {
-    if (!cameraId) return "Global (All)";
-    // Check if it's a group ID
-    const group = groups.find((g) => g.id === cameraId);
-    if (group) return group.name;
-    return cameraId;
+  const getScopeName = (cameraId: string | null, groupId?: string | null) => {
+    if (groupId) {
+      const group = groups.find((g) => g.id === groupId);
+      return group ? group.name : groupId;
+    }
+    if (cameraId) return cameraId;
+    return "Global (All)";
   };
 
   const confirmDelete = (type: "temp" | "gap", id: string, name: string) => {
@@ -124,7 +111,7 @@ export function ThresholdLists({
                 {tempThresholds.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.name}</TableCell>
-                    <TableCell>{getScopeName(t.cameraId)}</TableCell>
+                    <TableCell>{getScopeName(t.cameraId, t.groupId)}</TableCell>
                     <TableCell>
                       {t.minCelsius != null && <Badge variant="outline">Min: {t.minCelsius}°C</Badge>}
                       {" "}
@@ -176,7 +163,7 @@ export function ThresholdLists({
                 {gapThresholds.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.name}</TableCell>
-                    <TableCell>{getScopeName(t.cameraId)}</TableCell>
+                    <TableCell>{getScopeName(t.cameraId, t.groupId)}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {t.direction === "RISE" && "Rise"}

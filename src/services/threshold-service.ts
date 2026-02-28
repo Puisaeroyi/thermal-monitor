@@ -25,6 +25,7 @@ export async function createTemperatureThreshold(
     data: {
       name: input.name,
       cameraId: input.cameraId ?? null,
+      groupId: input.groupId ?? null,
       minCelsius: input.minCelsius ?? null,
       maxCelsius: input.maxCelsius ?? null,
       cooldownMinutes: input.cooldownMinutes ?? 5,
@@ -45,6 +46,7 @@ export async function updateTemperatureThreshold(
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.cameraId !== undefined && { cameraId: input.cameraId }),
+      ...(input.groupId !== undefined && { groupId: input.groupId }),
       ...(input.minCelsius !== undefined && { minCelsius: input.minCelsius }),
       ...(input.maxCelsius !== undefined && { maxCelsius: input.maxCelsius }),
       ...(input.cooldownMinutes !== undefined && {
@@ -81,6 +83,7 @@ export async function createGapThreshold(input: GapThresholdInput) {
     data: {
       name: input.name,
       cameraId: input.cameraId ?? null,
+      groupId: input.groupId ?? null,
       intervalMinutes: input.intervalMinutes,
       maxGapCelsius: input.maxGapCelsius,
       direction: input.direction
@@ -104,6 +107,7 @@ export async function updateGapThreshold(
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.cameraId !== undefined && { cameraId: input.cameraId }),
+      ...(input.groupId !== undefined && { groupId: input.groupId }),
       ...(input.intervalMinutes !== undefined && {
         intervalMinutes: input.intervalMinutes,
       }),

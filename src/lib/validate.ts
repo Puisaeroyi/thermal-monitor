@@ -17,6 +17,7 @@ export interface ReadingInput {
 export interface TemperatureThresholdInput {
   name: string;
   cameraId?: string | null;
+  groupId?: string | null;
   minCelsius?: number | null;
   maxCelsius?: number | null;
   cooldownMinutes?: number;
@@ -27,6 +28,7 @@ export interface TemperatureThresholdInput {
 export interface GapThresholdInput {
   name: string;
   cameraId?: string | null;
+  groupId?: string | null;
   intervalMinutes: number;
   maxGapCelsius: number;
   direction?: "RISE" | "DROP" | "BOTH";
@@ -149,6 +151,7 @@ export function validateTemperatureThresholdInput(
   return {
     name: d.name as string,
     cameraId: d.cameraId as string | null | undefined,
+    groupId: d.groupId as string | null | undefined,
     minCelsius: d.minCelsius as number | null | undefined,
     maxCelsius: d.maxCelsius as number | null | undefined,
     cooldownMinutes: d.cooldownMinutes as number | undefined,
@@ -184,6 +187,7 @@ export function validateGapThresholdInput(data: unknown): GapThresholdInput {
   return {
     name: d.name as string,
     cameraId: d.cameraId as string | null | undefined,
+    groupId: d.groupId as string | null | undefined,
     intervalMinutes: d.intervalMinutes as number,
     maxGapCelsius: d.maxGapCelsius as number,
     direction: d.direction as "RISE" | "DROP" | "BOTH" | undefined,

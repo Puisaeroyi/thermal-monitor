@@ -53,10 +53,12 @@ model Group {
 }
 
 model Reading {
-  id        BigInt   @id @default(autoincrement())
-  cameraId  String   @map("camera_id")
-  celsius   Float    @db.Real
-  timestamp DateTime @db.Timestamptz()
+  id         BigInt   @id @default(autoincrement())
+  cameraId   String   @map("camera_id")
+  celsius    Float    @db.Real
+  maxCelsius Float?   @map("max_celsius") @db.Real
+  minCelsius Float?   @map("min_celsius") @db.Real
+  timestamp  DateTime @db.Timestamptz()
 
   camera Camera @relation(fields: [cameraId], references: [cameraId], onDelete: Cascade)
 

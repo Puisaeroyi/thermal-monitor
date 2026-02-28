@@ -35,9 +35,16 @@ export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProp
       </div>
       <div className="flex flex-col items-end gap-1">
         {latestReading != null ? (
-          <span className="text-5xl font-bold tabular-nums">
-            {latestReading.celsius.toFixed(1)}°C
-          </span>
+          <>
+            <span className="text-5xl font-bold tabular-nums">
+              {latestReading.celsius.toFixed(1)}°C
+            </span>
+            {latestReading.minCelsius != null && latestReading.maxCelsius != null && (
+              <span className="text-sm text-muted-foreground tabular-nums">
+                Range: {latestReading.minCelsius.toFixed(1)}°C – {latestReading.maxCelsius.toFixed(1)}°C
+              </span>
+            )}
+          </>
         ) : (
           <span className="text-3xl font-bold text-muted-foreground">—</span>
         )}

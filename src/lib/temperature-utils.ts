@@ -5,7 +5,12 @@ export type TemperatureStatus = "normal" | "warning" | "danger" | "inactive";
 
 /** Convert Celsius to Fahrenheit, rounded to 1 decimal */
 export function celsiusToFahrenheit(c: number): number {
-  return Math.round((c * 9 / 5 + 32) * 10) / 10;
+  return Math.round(((c * 9) / 5 + 32) * 10) / 10;
+}
+
+/** Convert Fahrenheit to Celsius, rounded to 1 decimal */
+export function fahrenheitToCelsius(f: number): number {
+  return Math.round(((f - 32) * 5) / 9 * 10) / 10;
 }
 
 /** Format temperature value with degree symbol and unit */

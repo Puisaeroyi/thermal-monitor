@@ -11,6 +11,8 @@ export interface CameraInput {
 export interface ReadingInput {
   cameraId: string;
   celsius: number;
+  maxCelsius?: number;
+  minCelsius?: number;
   timestamp: string;
 }
 
@@ -97,9 +99,24 @@ export function validateReadingInput(data: unknown): ReadingInput {
     throw new ValidationError("timestamp must be a valid ISO date string");
   }
 
+  if (d.maxCelsius !== undefined && typeof d.maxCelsius !== "number") {
+    throw new ValidationError("maxCelsius must be a number");
+  }
+  if (d.maxCelsius !== undefined && !isFinite(d.maxCelsius as number)) {
+    throw new ValidationError("maxCelsius must be a finite number");
+  }
+  if (d.minCelsius !== undefined && typeof d.minCelsius !== "number") {
+    throw new ValidationError("minCelsius must be a number");
+  }
+  if (d.minCelsius !== undefined && !isFinite(d.minCelsius as number)) {
+    throw new ValidationError("minCelsius must be a finite number");
+  }
+
   return {
     cameraId: d.cameraId as string,
     celsius: d.celsius as number,
+    ...(d.maxCelsius !== undefined && { maxCelsius: d.maxCelsius as number }),
+    ...(d.minCelsius !== undefined && { minCelsius: d.minCelsius as number }),
     timestamp: d.timestamp as string,
   };
 }

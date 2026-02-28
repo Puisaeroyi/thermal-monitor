@@ -2,8 +2,9 @@
 
 import {
   ResponsiveContainer,
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -15,6 +16,8 @@ import { CustomTooltip } from "./custom-tooltip";
 interface Reading {
   timestamp: string;
   celsius: number;
+  maxCelsius?: number | null;
+  minCelsius?: number | null;
 }
 
 interface ThresholdLine {
@@ -34,7 +37,7 @@ function formatXAxis(value: string): string {
   return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Line chart for temperature readings with optional threshold reference lines. */
+/** Line chart for temperature readings with optional threshold reference lines and min/max range band. */
 export function TemperatureLineChart({ readings, thresholds = [] }: TemperatureLineChartProps) {
   if (readings.length === 0) {
     return (
@@ -44,9 +47,11 @@ export function TemperatureLineChart({ readings, thresholds = [] }: TemperatureL
     );
   }
 
+  const hasRange = readings.some((r) => r.maxCelsius != null && r.minCelsius != null);
+
   return (
     <ResponsiveContainer width="100%" height={400}>
-      <LineChart data={readings} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+      <ComposedChart data={readings} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         <XAxis
           dataKey="timestamp"
@@ -61,6 +66,28 @@ export function TemperatureLineChart({ readings, thresholds = [] }: TemperatureL
           width={40}
         />
         <Tooltip content={<CustomTooltip />} />
+        {hasRange && (
+          <Area
+            type="monotone"
+            dataKey="maxCelsius"
+            name="Max"
+            stroke="none"
+            fill="#2563eb"
+            fillOpacity={0.08}
+            isAnimationActive={false}
+          />
+        )}
+        {hasRange && (
+          <Area
+            type="monotone"
+            dataKey="minCelsius"
+            name="Min"
+            stroke="none"
+            fill="var(--background, #ffffff)"
+            fillOpacity={1}
+            isAnimationActive={false}
+          />
+        )}
         <Line
           type="monotone"
           dataKey="celsius"
@@ -96,7 +123,7 @@ export function TemperatureLineChart({ readings, thresholds = [] }: TemperatureL
           }
           return lines;
         })}
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }

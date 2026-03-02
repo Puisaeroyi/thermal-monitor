@@ -45,10 +45,8 @@ export async function GET() {
         sub.disconnect();
       };
 
-      // ReadableStream cancel callback
-      stream.cancel = async () => {
-        cleanup();
-      };
+      // Return cleanup function for ReadableStream cancel
+      return cleanup;
     },
   });
 

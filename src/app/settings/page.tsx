@@ -8,6 +8,9 @@ import { TemperatureThresholdForm } from "@/components/settings/temperature-thre
 import { GapThresholdForm } from "@/components/settings/gap-threshold-form";
 import { ThresholdLists } from "@/components/settings/threshold-lists";
 import { GroupManagement } from "@/components/settings/group-management";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { useTempUnit } from "@/contexts/temp-unit-context";
 
 interface Group {
   id: string;
@@ -22,6 +25,7 @@ export default function SettingsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [tempThresholds, setTempThresholds] = useState<TemperatureThreshold[]>([]);
   const [gapThresholds, setGapThresholds] = useState<GapThreshold[]>([]);
+  const { unit, setUnit } = useTempUnit();
   const [loading, setLoading] = useState(true);
   const [openForm, setOpenForm] = useState<FormType>(null);
   const [editingTemp, setEditingTemp] = useState<TemperatureThreshold | null>(null);
@@ -101,6 +105,32 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Manage groups, temperature and gap thresholds</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Display</CardTitle>
+          <CardDescription>Configure how data is displayed</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="temp-unit" className="flex flex-col gap-1">
+              <span>Temperature Unit</span>
+              <span className="text-xs text-muted-foreground font-normal">
+                Switch between Celsius and Fahrenheit
+              </span>
+            </Label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">°C</span>
+              <Switch
+                id="temp-unit"
+                checked={unit === "F"}
+                onCheckedChange={(checked) => setUnit(checked ? "F" : "C")}
+              />
+              <span className="text-sm text-muted-foreground">°F</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

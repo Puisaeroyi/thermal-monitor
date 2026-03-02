@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/layout/header";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { ThemeProvider } from "@/components/layout/theme-provider";
+import { TempUnitProvider } from "@/contexts/temp-unit-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,6 +33,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <TempUnitProvider>
         {/* Desktop: fixed sidebar left + scrollable main content right */}
         <div className="flex h-screen overflow-hidden">
           {/* Fixed sidebar — hidden on mobile, visible md+ */}
@@ -54,6 +56,7 @@ export default function RootLayout({
         </div>
 
         <Toaster />
+        </TempUnitProvider>
         </ThemeProvider>
       </body>
     </html>

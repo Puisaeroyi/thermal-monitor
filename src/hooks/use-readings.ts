@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Reading } from "@/types/reading";
+import { POLLING_INTERVAL_MS } from "@/lib/constants";
 
 interface UseReadingsResult {
   readings: Reading[];
@@ -86,7 +87,7 @@ export function useReadings(cameraId: string, timeRange: number): UseReadingsRes
   // Start polling after initial load
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(fetchIncremental, 5000);
+    intervalRef.current = setInterval(fetchIncremental, POLLING_INTERVAL_MS);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };

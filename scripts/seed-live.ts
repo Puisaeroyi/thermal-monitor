@@ -33,8 +33,8 @@ async function main() {
     const start = Date.now();
     await tick();
     const elapsed = Date.now() - start;
-    // Wait remaining time to hit 5s interval
-    if (running) await new Promise((r) => setTimeout(r, Math.max(0, 5000 - elapsed)));
+    // Wait remaining time to hit 1s interval
+    if (running) await new Promise((r) => setTimeout(r, Math.max(0, 1000 - elapsed)));
   }
   console.log("Live seeder stopped.");
 }

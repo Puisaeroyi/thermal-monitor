@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePolling } from "@/hooks/use-polling";
 import type { TemperatureThreshold } from "@/types/threshold";
+import { POLLING_INTERVAL_MS } from "@/lib/constants";
 
 export interface CameraReading {
   cameraId: string;
@@ -28,12 +29,12 @@ export interface UseCamerasResult {
 export function useCameras(): UseCamerasResult {
   const [thresholds, setThresholds] = useState<TemperatureThreshold[]>([]);
 
-  // Poll latest readings every 5 seconds
+  // Poll latest readings every 1 second
   const {
     data: cameras,
     error,
     isLoading,
-  } = usePolling<CameraReading[]>("/api/readings/latest", 5000);
+  } = usePolling<CameraReading[]>("/api/readings/latest", POLLING_INTERVAL_MS);
 
   // Fetch thresholds once on mount
   useEffect(() => {

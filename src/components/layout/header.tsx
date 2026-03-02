@@ -12,46 +12,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-
-/** Temperature unit stored in localStorage for persistence across sessions */
-const UNIT_KEY = "thermal-temp-unit";
-
-export type TempUnit = "C" | "F";
-
-interface HeaderProps {
-  onUnitChange?: (unit: TempUnit) => void;
-  unit?: TempUnit;
-}
+import { useTempUnit } from "@/contexts/temp-unit-context";
 
 /** App header with title, temperature unit toggle, and mobile sidebar trigger */
-export function Header({ onUnitChange, unit: externalUnit }: HeaderProps) {
-  const [unit, setUnit] = useState<TempUnit>("C");
+export function Header() {
+  const { unit, toggleUnit } = useTempUnit();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
-
-  // Restore unit preference from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(UNIT_KEY) as TempUnit | null;
-    if (stored === "C" || stored === "F") {
-      setUnit(stored);
-      onUnitChange?.(stored);
-    }
-  }, [onUnitChange]);
-
-  // Sync with external unit if provided
-  useEffect(() => {
-    if (externalUnit) setUnit(externalUnit);
-  }, [externalUnit]);
-
-  function toggleUnit() {
-    const next: TempUnit = unit === "C" ? "F" : "C";
-    setUnit(next);
-    localStorage.setItem(UNIT_KEY, next);
-    onUnitChange?.(next);
-  }
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center border-b bg-background px-4 gap-3">

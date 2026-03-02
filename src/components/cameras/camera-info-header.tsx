@@ -3,6 +3,8 @@
 import { Camera } from "@/types/camera";
 import { Reading } from "@/types/reading";
 import { Badge } from "@/components/ui/badge";
+import { useTempUnit } from "@/contexts/temp-unit-context";
+import { formatTemperature } from "@/lib/temperature-utils";
 
 interface CameraInfoHeaderProps {
   camera: Camera;
@@ -11,6 +13,7 @@ interface CameraInfoHeaderProps {
 
 /** Displays camera identity, status badge, current temperature, and last update time. */
 export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProps) {
+  const { unit } = useTempUnit();
   const lastUpdated = latestReading
     ? new Date(latestReading.timestamp).toLocaleString(undefined, {
         month: "short",
@@ -36,7 +39,7 @@ export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProp
       <div className="flex flex-col items-end gap-1">
         {latestReading != null ? (
           <span className="text-5xl font-bold tabular-nums">
-            {latestReading.celsius.toFixed(1)}°C
+            {formatTemperature(latestReading.celsius, unit)}
           </span>
         ) : (
           <span className="text-3xl font-bold text-muted-foreground">—</span>

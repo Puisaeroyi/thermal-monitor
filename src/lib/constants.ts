@@ -1,5 +1,5 @@
 /** Polling interval for dashboard refresh (ms) */
-export const POLLING_INTERVAL_MS = 5000;
+export const POLLING_INTERVAL_MS = 2000;
 
 /** Polling interval for alerts (ms) */
 export const ALERT_POLLING_INTERVAL_MS = 10000;

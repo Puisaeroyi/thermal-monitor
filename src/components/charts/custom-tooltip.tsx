@@ -1,5 +1,8 @@
 "use client";
 
+import { useTempUnit } from "@/contexts/temp-unit-context";
+import { formatTemperature } from "@/lib/temperature-utils";
+
 /** Custom Recharts tooltip showing formatted timestamp and temperature. */
 
 interface TooltipEntry {
@@ -16,6 +19,7 @@ interface CustomTooltipProps {
 }
 
 export function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
+  const { unit } = useTempUnit();
   if (!active || !payload || payload.length === 0) return null;
 
   const ts = label ? new Date(String(label)) : null;
@@ -34,7 +38,7 @@ export function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
       <p className="text-muted-foreground mb-1">{formatted}</p>
       {payload.map((entry, i) => (
         <p key={`${entry.dataKey ?? i}`} className="font-medium" style={{ color: entry.color }}>
-          {entry.name ?? "Temperature"}: {typeof entry.value === "number" ? entry.value.toFixed(1) : entry.value}°C
+          {entry.name ?? "Temperature"}: {typeof entry.value === "number" ? formatTemperature(entry.value, unit) : entry.value}
         </p>
       ))}
     </div>

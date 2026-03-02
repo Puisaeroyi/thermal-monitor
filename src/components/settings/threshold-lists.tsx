@@ -1,6 +1,8 @@
 "use client";
 
 import { TemperatureThreshold, GapThreshold } from "@/types/threshold";
+import { useTempUnit } from "@/contexts/temp-unit-context";
+import { formatTemperature } from "@/lib/temperature-utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
@@ -55,6 +57,7 @@ export function ThresholdLists({
   onToggleTemp,
   onToggleGap,
 }: ThresholdListsProps) {
+  const { unit } = useTempUnit();
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     type: "temp" | "gap" | null;
@@ -113,9 +116,9 @@ export function ThresholdLists({
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>{getScopeName(t.cameraId, t.groupId)}</TableCell>
                     <TableCell>
-                      {t.minCelsius != null && <Badge variant="outline">Min: {t.minCelsius}°C</Badge>}
+                      {t.minCelsius != null && <Badge variant="outline">Min: {formatTemperature(t.minCelsius, unit)}</Badge>}
                       {" "}
-                      {t.maxCelsius != null && <Badge variant="outline">Max: {t.maxCelsius}°C</Badge>}
+                      {t.maxCelsius != null && <Badge variant="outline">Max: {formatTemperature(t.maxCelsius, unit)}</Badge>}
                     </TableCell>
                     <TableCell>{t.cooldownMinutes}m</TableCell>
                     <TableCell>
@@ -171,7 +174,7 @@ export function ThresholdLists({
                         {t.direction === "BOTH" && "Any"}
                       </Badge>
                       {" "}
-                      {t.maxGapCelsius}°C in {t.intervalMinutes}m
+                      {formatTemperature(t.maxGapCelsius, unit)} in {t.intervalMinutes}m
                     </TableCell>
                     <TableCell>{t.cooldownMinutes}m</TableCell>
                     <TableCell>

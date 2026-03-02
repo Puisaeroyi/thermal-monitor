@@ -1,7 +1,7 @@
-/** Polling interval for dashboard refresh (ms) */
+/** Polling interval for dashboard refresh (ms) - now fallback only when SSE unavailable */
 export const POLLING_INTERVAL_MS = 2000;
 
-/** Polling interval for alerts (ms) */
+/** Polling interval for alerts (ms) - now fallback only when SSE unavailable */
 export const ALERT_POLLING_INTERVAL_MS = 10000;
 
 /** Max data points on real-time charts */

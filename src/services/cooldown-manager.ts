@@ -1,21 +1,26 @@
-/** In-memory cooldown tracker to prevent alert flooding. */
-class CooldownManager {
-  private cooldowns: Map<string, Date> = new Map();
+import { redis } from "@/lib/redis";
 
+/** Redis-backed cooldown tracker to prevent alert flooding. */
+export const cooldownManager = {
   /** Returns true if enough time has passed since the last alert for this threshold+camera pair. */
-  canAlert(thresholdId: string, cameraId: string, cooldownMinutes: number): boolean {
-    const key = `${thresholdId}:${cameraId}`;
-    const last = this.cooldowns.get(key);
-    if (!last) return true;
-    const elapsed = Date.now() - last.getTime();
-    return elapsed >= cooldownMinutes * 60 * 1000;
-  }
+  async canAlert(thresholdId: string, cameraId: string): Promise<boolean> {
+    const key = `cooldown:${thresholdId}:${cameraId}`;
+    try {
+      const exists = await redis.exists(key);
+      return !exists;
+    } catch (err) {
+      console.warn("[cooldown-manager] Redis exists error, allowing alert:", err);
+      return true;
+    }
+  },
 
   /** Records that an alert was fired for this threshold+camera pair right now. */
-  recordAlert(thresholdId: string, cameraId: string): void {
-    const key = `${thresholdId}:${cameraId}`;
-    this.cooldowns.set(key, new Date());
-  }
-}
-
-export const cooldownManager = new CooldownManager();
+  async recordAlert(thresholdId: string, cameraId: string, cooldownMinutes: number): Promise<void> {
+    const key = `cooldown:${thresholdId}:${cameraId}`;
+    try {
+      await redis.setex(key, cooldownMinutes * 60, "1");
+    } catch (err) {
+      console.error("[cooldown-manager] Redis setex error:", err);
+    }
+  },
+};

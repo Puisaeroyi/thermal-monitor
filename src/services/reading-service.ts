@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { DEFAULT_READINGS_LIMIT } from "@/lib/constants";
 import type { ReadingInput } from "@/lib/validate";
 import { evaluateReading } from "@/services/alert-evaluation-service";
+import { publishReadings } from "@/lib/redis-pubsub";
 
 export interface QueryReadingsParams {
   cameraId?: string;
@@ -58,6 +59,16 @@ export async function ingestReadings(readings: ReadingInput[]) {
     );
   } catch (err) {
     console.error("[reading-service] Alert evaluation error:", err);
+  }
+
+  // Publish latest readings to Redis for SSE distribution (fire-and-forget)
+  try {
+    const latest = await getLatestReadings();
+    publishReadings(latest).catch((e) => {
+      console.error("[reading-service] Publish readings error:", e);
+    });
+  } catch (err) {
+    console.error("[reading-service] Get latest readings error:", err);
   }
 
   return { inserted: result.count };

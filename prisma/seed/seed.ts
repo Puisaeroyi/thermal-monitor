@@ -72,24 +72,6 @@ async function main() {
       }
     }
 
-    // Sample thresholds
-    console.log("Creating sample thresholds...");
-    await prisma.temperatureThreshold.createMany({
-      data: [
-        { name: "Global High Temp", minCelsius: null, maxCelsius: 80, cooldownMinutes: 5, enabled: true },
-        { name: "Global Low Temp", minCelsius: -15, maxCelsius: null, cooldownMinutes: 5, enabled: true },
-        { name: "Furnace Max", cameraId: "CAM-001", maxCelsius: 85, cooldownMinutes: 10, enabled: true },
-        { name: "Cold Storage Min", cameraId: "CAM-031", minCelsius: -10, cooldownMinutes: 10, enabled: true },
-      ],
-    });
-    await prisma.gapThreshold.createMany({
-      data: [
-        { name: "Rapid Rise (5min)", intervalMinutes: 5, maxGapCelsius: 10, direction: "RISE", cooldownMinutes: 5 },
-        { name: "Rapid Drop (10min)", intervalMinutes: 10, maxGapCelsius: 15, direction: "DROP", cooldownMinutes: 10 },
-        { name: "Any Rapid Change (15min)", intervalMinutes: 15, maxGapCelsius: 20, direction: "BOTH", cooldownMinutes: 15 },
-      ],
-    });
-
     const readingCount = await prisma.reading.count();
     console.log(`\nSeeding complete: ${readingCount} readings, ${cameraSeedData.length} cameras.`);
   } finally {

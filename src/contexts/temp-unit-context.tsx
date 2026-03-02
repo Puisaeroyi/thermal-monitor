@@ -13,17 +13,21 @@ interface TempUnitContextValue {
 }
 
 const TempUnitContext = createContext<TempUnitContextValue>({
-  unit: "C",
+  unit: "F",
   toggleUnit: () => {},
   setUnit: () => {},
 });
 
 export function TempUnitProvider({ children }: { children: React.ReactNode }) {
-  const [unit, setUnitState] = useState<TempUnit>("C");
+  const [unit, setUnitState] = useState<TempUnit>("F");
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as TempUnit | null;
-    if (stored === "C" || stored === "F") setUnitState(stored);
+    if (stored === "C" || stored === "F") {
+      setUnitState(stored);
+    } else {
+      localStorage.setItem(STORAGE_KEY, "F");
+    }
   }, []);
 
   const setUnit = useCallback((u: TempUnit) => {

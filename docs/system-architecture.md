@@ -31,8 +31,9 @@ Real-time thermal camera monitoring with synchronous alert evaluation on reading
 │             (Node.js, TypeScript, App Router)              │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │            API Routes (15 endpoints)                  │  │
+│  │            API Routes (16 endpoints)                  │  │
 │  │  GET /api/sse (Server-Sent Events)                   │  │
+│  │  POST /api/proxy (HTTP proxy for local network)     │  │
 │  │  GET /api/cameras                                    │  │
 │  │  POST /api/readings (+ alert evaluation + publish)   │  │
 │  │  GET /api/readings/latest (LATERAL JOIN)            │  │
@@ -390,7 +391,8 @@ app/layout.tsx (Server Root)
   │  ├─ Link → /cameras
   │  ├─ Link → /alerts
   │  ├─ Link → /comparison
-  │  └─ Link → /settings
+  │  ├─ Link → /settings
+  │  └─ Link → /api-tester (new)
   │
   └─ <children> (Page-specific)
      │
@@ -430,6 +432,12 @@ app/layout.tsx (Server Root)
         ├─ GapThresholdForm
         ├─ ThresholdLists
         └─ GroupManagement
+
+     └─ /api-tester/page.tsx (Client)
+        ├─ RequestForm (URL, method, headers, body inputs)
+        ├─ ResponseViewer (status, headers, body, duration)
+        ├─ RequestHistory (sidebar with localStorage persistence)
+        └─ useRequestHistory hook
 ```
 
 ---

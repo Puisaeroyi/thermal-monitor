@@ -4,6 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { AlertFilters, type AlertFiltersState } from "@/components/alerts/alert-filters";
 import { AlertList } from "@/components/alerts/alert-list";
+import {
+  AlertNoteDialog,
+  type AlertNoteDialogMode,
+} from "@/components/alerts/alert-note-dialog";
 
 interface Camera {
   id: string;
@@ -12,15 +16,20 @@ interface Camera {
 
 interface AlertRow {
   id: string;
+  eventId: number;
   cameraId: string;
+  displayType: "Max Temperature" | "Increase Temperature";
+  statusLabel: "Checked" | "Unchecked";
   type: string;
   message: string;
+  shortMessage: string;
   celsius: number;
   thresholdValue: number | null;
+  note: string | null;
   acknowledged: boolean;
   acknowledgedAt: string | null;
   createdAt: string;
-  camera?: { name: string };
+  camera?: { name: string; ip?: string | null };
 }
 
 interface AlertsResponse {
@@ -36,6 +45,7 @@ const DEFAULT_FILTERS: AlertFiltersState = {
   acknowledged: "all",
   from: "",
   to: "",
+  sort: "desc",
 };
 
 /** Alert history page — filterable, paginated list with acknowledge actions. */
@@ -50,12 +60,35 @@ export default function AlertsPage() {
     pages: 1,
   });
   const [loading, setLoading] = useState(false);
+  const [noteDialog, setNoteDialog] = useState<{
+    open: boolean;
+    mode: AlertNoteDialogMode;
+    alert: AlertRow | null;
+  }>({
+    open: false,
+    mode: "view",
+    alert: null,
+  });
 
   // Load cameras once for filter dropdown
   useEffect(() => {
     fetch("/api/cameras")
       .then((r) => r.json())
-      .then((d) => setCameras(Array.isArray(d) ? d : d.cameras ?? []))
+      .then((d) => {
+        const rows = (Array.isArray(d) ? d : d.cameras ?? []) as Array<{
+          id?: string;
+          cameraId?: string;
+          name?: string;
+        }>;
+        setCameras(
+          rows
+            .map((c) => ({
+              id: c.cameraId ?? c.id ?? "",
+              name: c.name ?? "",
+            }))
+            .filter((c) => c.id && c.name)
+        );
+      })
       .catch(() => {});
   }, []);
 
@@ -68,9 +101,12 @@ export default function AlertsPage() {
       if (filters.acknowledged !== "all") params.set("acknowledged", filters.acknowledged);
       if (filters.from) params.set("from", new Date(filters.from).toISOString());
       if (filters.to) params.set("to", new Date(filters.to).toISOString());
+      params.set("sort", filters.sort);
       params.set("page", String(page));
 
-      const res = await fetch(`/api/alerts?${params.toString()}`);
+      const res = await fetch(`/api/alerts?${params.toString()}`, {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error("Failed to fetch alerts");
       setData(await res.json());
     } catch (err) {
@@ -91,15 +127,52 @@ export default function AlertsPage() {
     setPage(1);
   }
 
-  async function handleAcknowledge(id: string) {
+  function openNoteDialog(mode: AlertNoteDialogMode, alert: AlertRow) {
+    setNoteDialog({ open: true, mode, alert });
+  }
+
+  function handleNoteDialogOpenChange(open: boolean) {
+    if (open) return;
+    setNoteDialog({ open: false, mode: "view", alert: null });
+  }
+
+  async function handleSubmitNote(alertId: string, note: string) {
+    const res = await fetch(`/api/alerts/${alertId}/acknowledge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    });
+
+    let payload: { error?: string } | null = null;
     try {
-      const res = await fetch(`/api/alerts/${id}/acknowledge`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to acknowledge alert");
-      toast.success("Alert acknowledged");
-      fetchAlerts();
+      payload = await res.json();
     } catch {
-      toast.error("Failed to acknowledge alert");
+      // Ignore non-JSON responses.
     }
+
+    if (!res.ok) {
+      throw new Error(payload?.error ?? "Failed to save note");
+    }
+
+    const wasChecked = noteDialog.alert?.acknowledged ?? false;
+
+    // Reflect latest status/note immediately in current table before re-fetch.
+    setData((prev) => ({
+      ...prev,
+      alerts: prev.alerts.map((alert) =>
+        alert.id === alertId
+          ? {
+              ...alert,
+              acknowledged: true,
+              statusLabel: "Checked",
+              note,
+            }
+          : alert
+      ),
+    }));
+
+    toast.success(wasChecked ? "Note updated" : "Alert checked");
+    await fetchAlerts();
   }
 
   return (
@@ -116,10 +189,20 @@ export default function AlertsPage() {
           total={data.total}
           page={data.page}
           pages={data.pages}
-          onAcknowledge={handleAcknowledge}
+          onCheck={(alert) => openNoteDialog("check", alert)}
+          onEditNote={(alert) => openNoteDialog("edit", alert)}
+          onViewNote={(alert) => openNoteDialog("view", alert)}
           onPageChange={setPage}
         />
       )}
+
+      <AlertNoteDialog
+        open={noteDialog.open}
+        mode={noteDialog.mode}
+        alert={noteDialog.alert}
+        onOpenChange={handleNoteDialogOpenChange}
+        onSubmit={handleSubmitNote}
+      />
     </div>
   );
 }

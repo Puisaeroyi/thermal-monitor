@@ -15,15 +15,20 @@ import { formatTemperature } from "@/lib/temperature-utils";
 
 interface AlertRow {
   id: string;
+  eventId: number;
   cameraId: string;
+  displayType: "Max Temperature" | "Increase Temperature";
+  statusLabel: "Checked" | "Unchecked";
   type: string;
   message: string;
+  shortMessage: string;
   celsius: number;
   thresholdValue: number | null;
+  note: string | null;
   acknowledged: boolean;
   acknowledgedAt: string | null;
   createdAt: string;
-  camera?: { name: string };
+  camera?: { name: string; ip?: string | null };
 }
 
 interface AlertListProps {
@@ -31,7 +36,9 @@ interface AlertListProps {
   total: number;
   page: number;
   pages: number;
-  onAcknowledge: (id: string) => void;
+  onCheck: (alert: AlertRow) => void;
+  onEditNote: (alert: AlertRow) => void;
+  onViewNote: (alert: AlertRow) => void;
   onPageChange: (page: number) => void;
 }
 
@@ -47,67 +54,96 @@ export function AlertList({
   total,
   page,
   pages,
-  onAcknowledge,
+  onCheck,
+  onEditNote,
+  onViewNote,
   onPageChange,
 }: AlertListProps) {
   const { unit } = useTempUnit();
+
   return (
     <div className="space-y-3">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-[80px]">Event ID</TableHead>
             <TableHead className="w-[170px]">Timestamp</TableHead>
             <TableHead>Camera</TableHead>
+            <TableHead className="w-[130px]">IP</TableHead>
             <TableHead className="w-[110px]">Type</TableHead>
             <TableHead>Message</TableHead>
-            <TableHead className="w-[90px] text-right">Temp (°{unit})</TableHead>
+            <TableHead className="w-[95px] text-right">Temp ({unit})</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
-            <TableHead className="w-[120px]">Actions</TableHead>
+            <TableHead className="w-[120px]">Action</TableHead>
+            <TableHead className="w-[90px]">Note</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {alerts.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                 No alerts found.
               </TableCell>
             </TableRow>
           )}
           {alerts.map((alert) => (
             <TableRow key={alert.id} className={severityColor(alert.type, alert.acknowledged)}>
+              <TableCell className="tabular-nums">{alert.eventId}</TableCell>
               <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                 {new Date(alert.createdAt).toLocaleString()}
               </TableCell>
               <TableCell className="font-medium">
                 {alert.camera?.name ?? alert.cameraId}
               </TableCell>
+              <TableCell className="text-sm">{alert.camera?.ip ?? ""}</TableCell>
               <TableCell>
                 <Badge variant={alert.type === "GAP" ? "outline" : "destructive"}>
-                  {alert.type}
+                  {alert.displayType}
                 </Badge>
               </TableCell>
-              <TableCell className="text-sm max-w-xs truncate" title={alert.message}>
-                {alert.message}
+              <TableCell className="text-sm max-w-[240px] whitespace-normal leading-snug" title={alert.message}>
+                {alert.shortMessage}
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {formatTemperature(alert.celsius, unit)}
               </TableCell>
               <TableCell>
-                {alert.acknowledged ? (
-                  <Badge variant="secondary">Acknowledged</Badge>
-                ) : (
-                  <Badge variant="destructive">Unacknowledged</Badge>
-                )}
+                <Badge variant={alert.acknowledged ? "secondary" : "destructive"}>
+                  {alert.statusLabel}
+                </Badge>
               </TableCell>
               <TableCell>
                 {!alert.acknowledged && (
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => onAcknowledge(alert.id)}
+                    onClick={() => onCheck(alert)}
                   >
-                    Acknowledge
+                    Checked
                   </Button>
+                )}
+                {alert.acknowledged && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onEditNote(alert)}
+                  >
+                    Edit
+                  </Button>
+                )}
+              </TableCell>
+              <TableCell>
+                {alert.note ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-sm"
+                    onClick={() => onViewNote(alert)}
+                  >
+                    View
+                  </Button>
+                ) : (
+                  "-"
                 )}
               </TableCell>
             </TableRow>

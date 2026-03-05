@@ -104,6 +104,7 @@ model Alert {
   message        String
   celsius        Float     @db.Real
   thresholdValue Float?    @map("threshold_value") @db.Real
+  note           String?   @db.Text
   acknowledged   Boolean   @default(false)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz()
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()

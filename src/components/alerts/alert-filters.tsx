@@ -16,6 +16,7 @@ export interface AlertFiltersState {
   acknowledged: string;
   from: string;
   to: string;
+  sort: "asc" | "desc";
 }
 
 interface Camera {
@@ -64,8 +65,8 @@ export function AlertFilters({ filters, onChange, cameras }: AlertFiltersProps) 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="TEMPERATURE">Temperature</SelectItem>
-            <SelectItem value="GAP">Gap</SelectItem>
+            <SelectItem value="MAX_TEMPERATURE">Max Temperature</SelectItem>
+            <SelectItem value="INCREASE_TEMPERATURE">Increase Temperature</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -79,8 +80,8 @@ export function AlertFilters({ filters, onChange, cameras }: AlertFiltersProps) 
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
-            <SelectItem value="false">Unacknowledged</SelectItem>
-            <SelectItem value="true">Acknowledged</SelectItem>
+            <SelectItem value="false">Unchecked</SelectItem>
+            <SelectItem value="true">Checked</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -103,6 +104,20 @@ export function AlertFilters({ filters, onChange, cameras }: AlertFiltersProps) 
           value={filters.to}
           onChange={(e) => update("to", e.target.value)}
         />
+      </div>
+
+      {/* Sort by timestamp */}
+      <div className="flex flex-col gap-1 min-w-[190px]">
+        <Label>Sort Timestamp</Label>
+        <Select value={filters.sort} onValueChange={(v) => update("sort", v as "asc" | "desc")}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desc">Newest to oldest</SelectItem>
+            <SelectItem value="asc">Oldest to newest</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

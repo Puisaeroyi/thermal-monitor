@@ -3,50 +3,86 @@ import { getLatestReadings } from "@/services/reading-service";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    start(controller) {
-      // Create dedicated subscriber for this connection
-      const sub = redisSub.duplicate();
 
-      function send(event: string, data: string) {
-        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${data}\n\n`));
+  let closed = false;
+  let heartbeat: NodeJS.Timeout;
+  let sub: ReturnType<typeof redisSub.duplicate>;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      sub = redisSub.duplicate();
+      await sub.connect();
+
+      function cleanup() {
+        if (closed) return;
+        closed = true;
+
+        clearInterval(heartbeat);
+
+        try {
+          sub.unsubscribe();
+          sub.disconnect();
+        } catch {}
+
+        try {
+          controller.close();
+        } catch {}
       }
 
-      // Send heartbeat every 30s to keep connection alive
-      const heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(": heartbeat\n\n"));
+      function safeSend(event: string, data: string) {
+        if (closed) return;
+
+        try {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${data}\n\n`)
+          );
+        } catch {
+          // 🔥 VERY IMPORTANT
+          cleanup();
+        }
+      }
+
+      function safeComment(data: string) {
+        if (closed) return;
+
+        try {
+          controller.enqueue(encoder.encode(`: ${data}\n\n`));
+        } catch {
+          cleanup();
+        }
+      }
+
+      // Heartbeat
+      heartbeat = setInterval(() => {
+        safeComment("heartbeat");
       }, 30_000);
 
-      // Send initial data immediately so client doesn't wait for next publish
-      getLatestReadings()
-        .then((readings) => {
-          send("readings", JSON.stringify(readings));
-        })
-        .catch((err) => {
-          console.error("[sse] Initial data fetch error:", err);
-        });
+      // Initial data
+      try {
+        const readings = await getLatestReadings();
+        safeSend("readings", JSON.stringify(readings));
+      } catch (err) {
+        console.error("[sse] Initial fetch error:", err);
+      }
 
-      sub.subscribe("readings:latest", "alerts:new");
+      await sub.subscribe("readings:latest", "alerts:new");
 
       sub.on("message", (channel, message) => {
         if (channel === "readings:latest") {
-          send("readings", message);
+          safeSend("readings", message);
         } else if (channel === "alerts:new") {
-          send("alert", message);
+          safeSend("alert", message);
         }
       });
 
-      // Cleanup on client disconnect
-      const cleanup = () => {
-        clearInterval(heartbeat);
-        sub.unsubscribe();
-        sub.disconnect();
-      };
+      // 👇 CRITICAL: listen for client disconnect
+      req.signal.addEventListener("abort", cleanup);
+    },
 
-      // Return cleanup function for ReadableStream cancel
-      return cleanup;
+    cancel() {
+      closed = true;
     },
   });
 
@@ -54,8 +90,8 @@ export async function GET() {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
-      "Connection": "keep-alive",
-      "X-Accel-Buffering": "no", // Disable nginx buffering
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   });
 }

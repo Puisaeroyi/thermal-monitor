@@ -1,5 +1,7 @@
 "use client";
 
+import { useTempUnit } from "@/contexts/temp-unit-context";
+import { celsiusToFahrenheit } from "@/lib/temperature-utils";
 import {
   ResponsiveContainer,
   BarChart,
@@ -48,6 +50,7 @@ function severityColor(ratio: number): string {
 
 /** Bar chart showing rate of temperature change per time window vs configured thresholds. */
 export function GapBarChart({ readings, gapThresholds = [] }: GapBarChartProps) {
+  const { unit } = useTempUnit();
   const data = useMemo(() => {
     const windows = gapThresholds.length > 0
       ? gapThresholds.map((t) => ({ minutes: t.intervalMinutes, max: t.maxGapCelsius, label: t.name }))
@@ -79,7 +82,7 @@ export function GapBarChart({ readings, gapThresholds = [] }: GapBarChartProps) 
         <XAxis type="number" domain={[0, "auto"]} tick={{ fontSize: 12 }} tickFormatter={(v: number) => `${v}°`} />
         <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={36} />
         <Tooltip
-          formatter={(value: number | undefined) => [value != null ? `${value}°C` : "—", "Change"]}
+          formatter={(value: number | undefined) => [value != null ? `${unit === "F" ? celsiusToFahrenheit(value) : value}°${unit}` : "—", "Change"]}
           labelFormatter={(label) => `Window: ${label}`}
         />
         {data.map((entry) =>

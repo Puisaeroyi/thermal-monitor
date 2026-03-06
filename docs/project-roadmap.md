@@ -9,7 +9,8 @@ Implementation progress and future phases for Thermal Monitor.
 | Release | Version | Status | Target Date | Effort |
 |---------|---------|--------|------------|--------|
 | **Phase 1-3** | 0.1.0 | ✓ Complete | 2026-02-27 | 12h |
-| **Phase 4-7** | 0.2.0 | In Progress | 2026-03-03 | 20h |
+| **Phase 4-7** | 0.2.0 | ✓ Complete | 2026-03-03 | 20h |
+| **API Tester** | 0.2.1 | ✓ Complete | 2026-03-05 | 2h |
 | **v1.0 (MVP)** | 1.0.0 | Planned | 2026-03-10 | — |
 | **v1.1 (Scaling)** | 1.1.0 | Backlog | 2026-04-01 | — |
 | **v2.0 (Enterprise)** | 2.0.0 | Backlog | 2026-06-01 | — |
@@ -243,6 +244,40 @@ Implementation progress and future phases for Thermal Monitor.
 - [ ] SMTP failure doesn't block reading ingestion
 - [ ] Group colors persist
 - [ ] Settings form validation works
+
+---
+
+### Phase 8: API Tester (Complete)
+
+**Status:** Delivered 2026-03-05
+
+**Deliverables:**
+- [x] POST /api/proxy endpoint (server-side HTTP proxy)
+- [x] Private IP validation (10.x.x.x, 172.16-31.x.x, 192.168.x.x, localhost)
+- [x] Request form (URL, method, headers, body, timeout)
+- [x] Response viewer (status, headers, formatted body, duration)
+- [x] Request history (localStorage, max 50 entries)
+- [x] API Tester page (/api-tester)
+- [x] Sidebar navigation link
+
+**Components:**
+- ApiTesterPage (main container)
+- RequestForm (URL, method, headers, body inputs)
+- ResponseViewer (response display with copy button)
+- RequestHistory (sidebar with history list)
+- useRequestHistory hook (localStorage persistence)
+
+**Effort:** 2 hours
+
+**Dependencies:** Phase 3 (API endpoints complete)
+
+**Success Criteria:**
+- [x] Can send GET/POST/PUT/DELETE/PATCH requests to local network IPs
+- [x] Rejects requests to public IPs (security)
+- [x] Response displays status, headers, body, duration
+- [x] History persists across page refreshes
+- [x] Click history entry reloads request into form
+- [x] Build passes with no errors
 
 ---
 

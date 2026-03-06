@@ -8,6 +8,7 @@ import {
   GitCompare,
   Bell,
   Settings,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ const NAV_LINKS = [
   { href: "/comparison", label: "Comparison", icon: GitCompare },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/api-tester", label: "API Tester", icon: FlaskConical },
 ];
 
 interface SidebarNavProps {

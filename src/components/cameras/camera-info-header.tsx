@@ -3,6 +3,8 @@
 import { Camera } from "@/types/camera";
 import { Reading } from "@/types/reading";
 import { Badge } from "@/components/ui/badge";
+import { useTempUnit } from "@/contexts/temp-unit-context";
+import { formatTemperature } from "@/lib/temperature-utils";
 
 interface CameraInfoHeaderProps {
   camera: Camera;
@@ -11,14 +13,15 @@ interface CameraInfoHeaderProps {
 
 /** Displays camera identity, status badge, current temperature, and last update time. */
 export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProps) {
+  const { unit } = useTempUnit();
   const lastUpdated = latestReading
     ? new Date(latestReading.timestamp).toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "No data";
 
   return (
@@ -35,16 +38,9 @@ export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProp
       </div>
       <div className="flex flex-col items-end gap-1">
         {latestReading != null ? (
-          <>
-            <span className="text-5xl font-bold tabular-nums">
-              {latestReading.celsius.toFixed(1)}°C
-            </span>
-            {latestReading.minCelsius != null && latestReading.maxCelsius != null && (
-              <span className="text-sm text-muted-foreground tabular-nums">
-                Range: {latestReading.minCelsius.toFixed(1)}°C – {latestReading.maxCelsius.toFixed(1)}°C
-              </span>
-            )}
-          </>
+          <span className="text-5xl font-bold tabular-nums">
+            {latestReading.celsius.toFixed(1)}°C
+          </span>
         ) : (
           <span className="text-3xl font-bold text-muted-foreground">—</span>
         )}

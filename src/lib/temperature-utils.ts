@@ -13,6 +13,11 @@ export function fahrenheitToCelsius(f: number): number {
   return Math.round(((f - 32) * 5) / 9 * 10) / 10;
 }
 
+/** Convert Fahrenheit to Celsius, rounded to 1 decimal */
+export function fahrenheitToCelsius(f: number): number {
+  return Math.round(((f - 32) * 5 / 9) * 10) / 10;
+}
+
 /** Format temperature value with degree symbol and unit */
 export function formatTemperature(celsius: number, unit: "C" | "F"): string {
   if (unit === "F") {

@@ -1,12 +1,13 @@
 # Thermal Monitor
 
-Real-time thermal camera monitoring dashboard. Built with Next.js 16, React 19, PostgreSQL, Prisma 7, and Recharts. Monitor 40-50 cameras at 5-second intervals with real-time alerts and temperature/gap threshold evaluation.
+Real-time thermal camera monitoring dashboard. Built with Next.js 16, React 19, PostgreSQL, Prisma 7, Redis 7, and Recharts. Monitor 40-50 cameras at 5-second intervals with real-time alerts and temperature/gap threshold evaluation. Uses Server-Sent Events (SSE) for sub-second live updates.
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+
 - PostgreSQL 12+
+- Redis 7+ (optional, falls back to polling if unavailable)
 - npm
 
 ### Setup
@@ -49,7 +50,9 @@ Open [http://localhost:3000](http://localhost:3000) to view dashboard.
 | **Frontend** | Next.js 16, React 19, TypeScript |
 | **UI** | Tailwind CSS 4, shadcn/ui, Lucide icons |
 | **Charts** | Recharts 3.7 |
-| **Database** | PostgreSQL + Prisma 7.4 |
+| **Database** | PostgreSQL 16 + Prisma 7.4 |
+| **Cache/PubSub** | Redis 7 + ioredis |
+| **Real-time** | Server-Sent Events (SSE) |
 | **Email** | Nodemailer 8 |
 | **Theme** | next-themes (light/dark) |
 
@@ -116,8 +119,9 @@ See `docs/system-architecture.md` for schema diagram.
 | GET | `/api/cameras/[id]` | Get single camera |
 | PUT | `/api/cameras/[id]` | Update camera |
 | DELETE | `/api/cameras/[id]` | Delete camera |
-| GET | `/api/readings/latest` | Latest reading per camera (polling) |
+| GET | `/api/readings/latest` | Latest reading per camera |
 | POST | `/api/readings` | Bulk ingest readings + evaluate alerts |
+| GET | `/api/sse` | SSE stream for real-time updates |
 | GET | `/api/thresholds/temperature` | List temp thresholds |
 | POST | `/api/thresholds/temperature` | Create temp threshold |
 | GET/PUT/DELETE | `/api/thresholds/temperature/[id]` | Update/delete threshold |
@@ -132,12 +136,23 @@ See `docs/system-architecture.md` for schema diagram.
 
 Full request/response specs: `docs/api-docs.md`
 
-## Polling Architecture
+## SSE Architecture
 
-- Dashboard polls `/api/readings/latest` every 5 seconds for live updates
-- No WebSocket — simplified deployment, works behind any proxy
-- Upgrade to Server-Sent Events (SSE) or WebSocket if needed
-- Graceful error handling: stale data shown if network fails
+- **Primary**: Server-Sent Events via `/api/sse` for sub-second push updates
+- **Fallback**: HTTP polling every 5s if SSE unavailable (graceful degradation)
+- **Redis Pub/Sub**: Broadcast readings and alerts to all SSE connections
+- **Redis Cache**: Threshold data cached with 60s TTL, survives restarts
+- **Redis Cooldowns**: Alert cooldowns persist across restarts via TTL keys
+- **Benefits**: 50x fewer requests (2s polling → 1 SSE connection), instant updates, shared state across instances
+
+```
+Browser ←── SSE (EventSource) ←── /api/sse endpoint
+                   ↑
+             Redis Pub/Sub
+                   ↑
+        POST /api/readings → publish("readings:latest")
+                           → publish("alerts:new")
+```
 
 ## Alert Evaluation
 
@@ -145,8 +160,9 @@ Runs **synchronously during reading ingestion**:
 1. Filter applicable thresholds by scope: global (no camera/group), camera-specific, or group-scoped (if camera belongs to group)
 2. Temperature threshold breach? Create `TEMPERATURE` alert
 3. Gap threshold breach (e.g., 10°C/5min)? Create `GAP` alert
-4. Cooldown active? Skip if already alerted in last N minutes
+4. Cooldown active? Skip if already alerted in last N minutes (Redis TTL key)
 5. Email notify? Queue via Nodemailer (best-effort, non-blocking)
+6. Publish to Redis pub/sub → SSE pushes to all connected browsers
 
 In-memory ring buffer per camera tracks historical readings for gap detection—no extra DB queries. Threshold scope ensures only relevant rules are evaluated per camera.
 
@@ -169,6 +185,7 @@ See `docs/deployment-guide.md` for PostgreSQL setup, environment variables, and 
 - Stores only Celsius; converts to Fahrenheit on frontend
 - Composite index on `(camera_id, timestamp)` critical for 600 rows/min at scale
 - Graceful alert notification fallback if email unavailable
+- Redis is optional but recommended — system falls back to polling and in-memory state if unavailable
 
 ## Documentation
 

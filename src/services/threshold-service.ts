@@ -5,6 +5,7 @@ import type {
   GapThresholdInput,
 } from "@/lib/validate";
 import { thresholdCache } from "@/services/threshold-cache";
+import { publishThresholdInvalidation } from "@/lib/redis-pubsub";
 
 // ─── Temperature Thresholds ───────────────────────────────────────────────────
 
@@ -33,7 +34,10 @@ export async function createTemperatureThreshold(
       enabled: input.enabled ?? true,
     },
   });
-  thresholdCache.invalidate();
+  await thresholdCache.invalidate();
+  publishThresholdInvalidation().catch((err) =>
+    console.error("[threshold-service] Publish invalidation error:", err)
+  );
   return result;
 }
 
@@ -56,13 +60,19 @@ export async function updateTemperatureThreshold(
       ...(input.enabled !== undefined && { enabled: input.enabled }),
     },
   });
-  thresholdCache.invalidate();
+  await thresholdCache.invalidate();
+  publishThresholdInvalidation().catch((err) =>
+    console.error("[threshold-service] Publish invalidation error:", err)
+  );
   return result;
 }
 
 export async function deleteTemperatureThreshold(id: string) {
   const result = await prisma.temperatureThreshold.delete({ where: { id } });
-  thresholdCache.invalidate();
+  await thresholdCache.invalidate();
+  publishThresholdInvalidation().catch((err) =>
+    console.error("[threshold-service] Publish invalidation error:", err)
+  );
   return result;
 }
 
@@ -94,7 +104,10 @@ export async function createGapThreshold(input: GapThresholdInput) {
       enabled: input.enabled ?? true,
     },
   });
-  thresholdCache.invalidate();
+  await thresholdCache.invalidate();
+  publishThresholdInvalidation().catch((err) =>
+    console.error("[threshold-service] Publish invalidation error:", err)
+  );
   return result;
 }
 
@@ -124,12 +137,18 @@ export async function updateGapThreshold(
       ...(input.enabled !== undefined && { enabled: input.enabled }),
     },
   });
-  thresholdCache.invalidate();
+  await thresholdCache.invalidate();
+  publishThresholdInvalidation().catch((err) =>
+    console.error("[threshold-service] Publish invalidation error:", err)
+  );
   return result;
 }
 
 export async function deleteGapThreshold(id: string) {
   const result = await prisma.gapThreshold.delete({ where: { id } });
-  thresholdCache.invalidate();
+  await thresholdCache.invalidate();
+  publishThresholdInvalidation().catch((err) =>
+    console.error("[threshold-service] Publish invalidation error:", err)
+  );
   return result;
 }

@@ -1,6 +1,6 @@
 # System Architecture
 
-Real-time thermal camera monitoring with synchronous alert evaluation on reading ingestion.
+Real-time thermal camera monitoring with synchronous alert evaluation on reading ingestion. Uses Redis for caching and pub/sub, Server-Sent Events (SSE) for real-time push updates.
 
 ---
 
@@ -18,21 +18,24 @@ Real-time thermal camera monitoring with synchronous alert evaluation on reading
 │  │  - Settings forms (threshold mgmt)                   │  │
 │  │  - Alert list & filters                              │  │
 │  └──────────────────────────────────────────────────────┘  │
-│               ↓ (every 5 seconds)                           │
+│               ↓ (SSE EventSource connection)                │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │         Polling Hook (use-cameras)                    │  │
-│  │  fetch /api/readings/latest → setState               │  │
+│  │         SSE Hooks (use-sse, use-cameras)              │  │
+│  │  subscribe to /api/sse → on("readings") setState     │  │
+│  │  fallback to polling if SSE unavailable              │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
-              ↕ HTTP (REST API)
+              ↕ SSE (text/event-stream) + HTTP (REST API fallback)
 ┌─────────────────────────────────────────────────────────────┐
 │                   NEXT.JS SERVER                            │
 │             (Node.js, TypeScript, App Router)              │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │            API Routes (14 endpoints)                  │  │
+│  │            API Routes (16 endpoints)                  │  │
+│  │  GET /api/sse (Server-Sent Events)                   │  │
+│  │  POST /api/proxy (HTTP proxy for local network)     │  │
 │  │  GET /api/cameras                                    │  │
-│  │  POST /api/readings (+ alert evaluation)             │  │
+│  │  POST /api/readings (+ alert evaluation + publish)   │  │
 │  │  GET /api/readings/latest (LATERAL JOIN)            │  │
 │  │  GET/POST /api/thresholds/*                          │  │
 │  │  GET/PUT /api/alerts/*                               │  │
@@ -44,13 +47,23 @@ Real-time thermal camera monitoring with synchronous alert evaluation on reading
 │  │            Services (8 modules)                       │  │
 │  │  - reading-service (bulk ingest, query)             │  │
 │  │  - camera-service (CRUD)                            │  │
-│  │  - alert-service (query, filter)                    │  │
+│  │  - alert-service (query, filter, publish)           │  │
 │  │  - alert-evaluation-service (threshold check)       │  │
 │  │  - threshold-service (threshold CRUD)               │  │
-│  │  - threshold-cache (in-memory lookup)               │  │
-│  │  - cooldown-manager (alert spam prevention)         │  │
+│  │  - threshold-cache (Redis-backed cache)             │  │
+│  │  - cooldown-manager (Redis TTL keys)                │  │
 │  │  - gap-ring-buffer (rate-of-change detection)       │  │
 │  │  - email-service (Nodemailer)                       │  │
+│  └──────────────────────────────────────────────────────┘  │
+│               ↓                                              │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │            Redis 7 (Cache + Pub/Sub)                 │  │
+│  │  - thresholds:temp — cached temp thresholds (60s)   │  │
+│  │  - thresholds:gap — cached gap thresholds (60s)     │  │
+│  │  - cooldown:{id}:{cameraId} — TTL keys for cooldowns│  │
+│  │  - readings:latest — pub channel for SSE broadcast  │  │
+│  │  - alerts:new — pub channel for alert broadcast     │  │
+│  │  - thresholds:invalidate — pub for cache sync       │  │
 │  └──────────────────────────────────────────────────────┘  │
 │               ↓                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
@@ -61,7 +74,7 @@ Real-time thermal camera monitoring with synchronous alert evaluation on reading
 └─────────────────────────────────────────────────────────────┘
               ↕ PostgreSQL wire protocol
 ┌─────────────────────────────────────────────────────────────┐
-│                  POSTGRESQL 12+                             │
+│                  POSTGRESQL 16                              │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │              6 Tables                                 │  │
@@ -88,7 +101,56 @@ Real-time thermal camera monitoring with synchronous alert evaluation on reading
 
 ---
 
-## Data Flow — Polling (5s Cycle)
+## Data Flow — SSE (Primary Real-Time Transport)
+
+```
+Browser (Dashboard loaded)
+  │
+  ├─ [t=0] useSSE hook initializes EventSource
+  │  └─ new EventSource("/api/sse")
+  │     └─ Creates persistent TCP connection to server
+  │
+  ├─ [t=0] SSE connection established
+  │  └─ Server sends initial data immediately:
+  │     └─ event: readings
+  │         data: [{"cameraId":"cam-001","celsius":42.5,...},...]
+  │
+  ├─ [t=0.1s] Browser receives SSE event
+  │  └─ useSSE listener: on("readings", handler)
+  │     └─ setCameras(JSON.parse(e.data))
+  │        └─ Components re-render with new data
+  │
+  ├─ [t=2s] New reading ingested via POST /api/readings
+  │  └─ reading-service.ingestReadings() completes
+  │     └─ reading-service.getLatestReadings()
+  │        └─ publishReadings(latest) → Redis pub/sub
+  │           └─ Redis channel "readings:latest" broadcasts
+  │              └─ /api/sse route receives via redisSub
+  │                 └─ send("readings", JSON.stringify(readings))
+  │                    └─ Browser receives SSE event (see t=0.1s above)
+  │
+  ├─ [t=2.1s] Threshold breach detected
+  │  └─ alert-service.createAlert() completes
+  │     └─ publishAlert(alert) → Redis pub/sub
+  │        └─ Redis channel "alerts:new" broadcasts
+  │           └─ /api/sse route receives via redisSub
+  │              └─ send("alert", JSON.stringify(alert))
+  │                 └─ Browser receives SSE "alert" event
+  │                    └─ toast.warning() notification
+  │
+  └─ [continuous] Heartbeat every 30s
+     └─ : heartbeat\n\n keeps connection alive through proxies
+
+Latency breakdown:
+  - Redis pub/sub: <10ms
+  - SSE push to browser: <100ms (same open connection)
+  - Browser render: ~100-200ms
+  - Total: <300ms (vs 2-5s polling delay)
+```
+
+---
+
+## Data Flow — Polling (Fallback Transport)
 
 ```
 Browser (Dashboard loaded)
@@ -329,7 +391,8 @@ app/layout.tsx (Server Root)
   │  ├─ Link → /cameras
   │  ├─ Link → /alerts
   │  ├─ Link → /comparison
-  │  └─ Link → /settings
+  │  ├─ Link → /settings
+  │  └─ Link → /api-tester (new)
   │
   └─ <children> (Page-specific)
      │
@@ -369,6 +432,12 @@ app/layout.tsx (Server Root)
         ├─ GapThresholdForm
         ├─ ThresholdLists
         └─ GroupManagement
+
+     └─ /api-tester/page.tsx (Client)
+        ├─ RequestForm (URL, method, headers, body inputs)
+        ├─ ResponseViewer (status, headers, body, duration)
+        ├─ RequestHistory (sidebar with localStorage persistence)
+        └─ useRequestHistory hook
 ```
 
 ---
@@ -456,25 +525,38 @@ const [timeRange, setTimeRange] = useState<"1h"|"6h"|"24h"|"7d">("24h");
 
 ## Caching Strategy
 
-### Threshold Cache (In-Memory)
+### Threshold Cache (Redis-Backed)
 
-**Why:** Avoid database query per reading during evaluation
+**Why:** Avoid database query per reading during evaluation, survive restarts, share across instances
 
-**When:** Loaded at startup, refreshed on create/update
+**When:** Loaded on first access, refreshed every 60s (TTL), invalidated on create/update/delete
 
 ```typescript
 // src/services/threshold-cache.ts
-let cachedThresholds: TemperatureThreshold[] = [];
+const TEMP_KEY = "thresholds:temp";
+const GAP_KEY = "thresholds:gap";
+const TTL_SECONDS = 60;
 
-export async function refreshCache() {
-  cachedThresholds = await prisma.temperatureThreshold.findMany();
-}
+export const thresholdCache = {
+  async getTemperatureThresholds() {
+    const cached = await redis.get(TEMP_KEY);
+    if (cached) return JSON.parse(cached);
+    return this.refreshTemperature();
+  },
 
-// Called during evaluation (always in cache, <1ms)
-export function getCachedThresholds() {
-  return cachedThresholds;
-}
+  async refreshTemperature() {
+    const data = await prisma.temperatureThreshold.findMany({ where: { enabled: true } });
+    await redis.setex(TEMP_KEY, TTL_SECONDS, JSON.stringify(data));
+    return data;
+  },
+
+  async invalidate() {
+    await redis.del(TEMP_KEY, GAP_KEY);
+  },
+};
 ```
+
+**Graceful Fallback:** If Redis unavailable, queries database directly (no cache).
 
 ### Ring Buffer Cache (In-Memory)
 
@@ -496,22 +578,29 @@ export function getBuffer(cameraId: string) {
 // ~1KB per camera, 50 cameras = 50KB total
 ```
 
-### Cooldown Cache (In-Memory)
+### Cooldown Cache (Redis TTL Keys)
 
-**Why:** Prevent alert spam with simple timer
+**Why:** Prevent alert spam, survive restarts, auto-expire without cleanup
 
-**When:** Started after alert creation, checked before next alert
+**When:** Set after alert creation, checked before next alert
 
 ```typescript
 // src/services/cooldown-manager.ts
-const cooldowns = new Map<string, Map<string, Date>>();
+export const cooldownManager = {
+  async canAlert(thresholdId: string, cameraId: string, cooldownMinutes: number): Promise<boolean> {
+    const key = `cooldown:${thresholdId}:${cameraId}`;
+    const exists = await redis.exists(key);
+    return !exists;  // Can alert if key expired
+  },
 
-export function isOnCooldown(cameraId: string, thresholdId: string): boolean {
-  const expiry = cooldowns.get(cameraId)?.get(thresholdId);
-  if (!expiry) return false;
-  return Date.now() < expiry.getTime();
-}
+  async recordAlert(thresholdId: string, cameraId: string, cooldownMinutes: number): Promise<void> {
+    const key = `cooldown:${thresholdId}:${cameraId}`;
+    await redis.setex(key, cooldownMinutes * 60, "1");  // Auto-expires
+  },
+};
 ```
+
+**Graceful Fallback:** If Redis unavailable, allows all alerts (fails open).
 
 ### Dashboard Layout (localStorage)
 

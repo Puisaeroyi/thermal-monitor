@@ -1,41 +1,60 @@
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 
-/** Cached threshold data with TTL-based lazy refresh. */
-class ThresholdCache {
-  private tempThresholds: any[] = [];
-  private gapThresholds: any[] = [];
-  private lastRefresh: Date | null = null;
-  private readonly TTL = 60_000; // 60 seconds
+const TEMP_KEY = "thresholds:temp";
+const GAP_KEY = "thresholds:gap";
+const TTL_SECONDS = 60;
 
-  private isStale(): boolean {
-    if (!this.lastRefresh) return true;
-    return Date.now() - this.lastRefresh.getTime() > this.TTL;
-  }
+/** Redis-backed threshold cache with TTL-based lazy refresh. */
+export const thresholdCache = {
+  async getTemperatureThresholds(): Promise<unknown[]> {
+    try {
+      const cached = await redis.get(TEMP_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch (err) {
+      console.warn("[threshold-cache] Redis read error, falling back to DB:", err);
+    }
+    return this.refreshTemperature();
+  },
 
-  private async refresh(): Promise<void> {
-    const [temp, gap] = await Promise.all([
-      prisma.temperatureThreshold.findMany({ where: { enabled: true } }),
-      prisma.gapThreshold.findMany({ where: { enabled: true } }),
-    ]);
-    this.tempThresholds = temp;
-    this.gapThresholds = gap;
-    this.lastRefresh = new Date();
-  }
+  async getGapThresholds(): Promise<unknown[]> {
+    try {
+      const cached = await redis.get(GAP_KEY);
+      if (cached) return JSON.parse(cached);
+    } catch (err) {
+      console.warn("[threshold-cache] Redis read error, falling back to DB:", err);
+    }
+    return this.refreshGap();
+  },
 
-  async getTemperatureThresholds(): Promise<any[]> {
-    if (this.isStale()) await this.refresh();
-    return this.tempThresholds;
-  }
+  async refreshTemperature(): Promise<unknown[]> {
+    try {
+      const data = await prisma.temperatureThreshold.findMany({ where: { enabled: true } });
+      await redis.setex(TEMP_KEY, TTL_SECONDS, JSON.stringify(data));
+      return data;
+    } catch (err) {
+      console.error("[threshold-cache] Temperature refresh error:", err);
+      return [];
+    }
+  },
 
-  async getGapThresholds(): Promise<any[]> {
-    if (this.isStale()) await this.refresh();
-    return this.gapThresholds;
-  }
+  async refreshGap(): Promise<unknown[]> {
+    try {
+      const data = await prisma.gapThreshold.findMany({ where: { enabled: true } });
+      await redis.setex(GAP_KEY, TTL_SECONDS, JSON.stringify(data));
+      return data;
+    } catch (err) {
+      console.error("[threshold-cache] Gap refresh error:", err);
+      return [];
+    }
+  },
 
   /** Call after any threshold create/update/delete to force reload on next access. */
-  invalidate(): void {
-    this.lastRefresh = null;
-  }
-}
-
-export const thresholdCache = new ThresholdCache();
+  async invalidate(): Promise<void> {
+    try {
+      await redis.del(TEMP_KEY, GAP_KEY);
+    } catch (err) {
+      console.warn("[threshold-cache] Redis del error:", err);
+    }
+  },
+};

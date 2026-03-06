@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatTemperature, getTemperatureColor, getTimeSince } from "@/lib/temperature-utils";
 import type { CameraReading } from "@/hooks/use-cameras";
 import type { TemperatureThreshold } from "@/types/threshold";
-import type { TempUnit } from "@/components/layout/header";
+import type { TempUnit } from "@/contexts/temp-unit-context";
 import { cn } from "@/lib/utils";
 
 interface CameraCardProps {

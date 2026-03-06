@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { celsiusToFahrenheit, fahrenheitToCelsius } from "@/lib/temperature-utils";
 
 interface TempThresholdFormProps {
   open: boolean;
@@ -33,8 +34,9 @@ interface TempThresholdFormProps {
 interface TempForm {
   name: string;
   scope: string; // "all" for global, "group-{id}" for group
-  minCelsius: string;
-  maxCelsius: string;
+  unit: "C" | "F"; // User-selected unit for input
+  minTemp: string; // Display value in selected unit
+  maxTemp: string; // Display value in selected unit
   cooldownMinutes: string;
   enabled: boolean;
 }
@@ -42,8 +44,9 @@ interface TempForm {
 const EMPTY_FORM: TempForm = {
   name: "",
   scope: "all",
-  minCelsius: "",
-  maxCelsius: "",
+  unit: "F", // Default to Fahrenheit
+  minTemp: "",
+  maxTemp: "",
   cooldownMinutes: "5",
   enabled: true,
 };
@@ -69,11 +72,20 @@ export function TemperatureThresholdForm({
       } else if (threshold.cameraId) {
         scope = "camera-" + threshold.cameraId;
       }
+      // Default to Fahrenheit for editing, convert from Celsius
+      const unit: "C" | "F" = "F";
+      const minTemp = threshold.minCelsius !== null
+        ? (unit === "F" ? celsiusToFahrenheit(threshold.minCelsius).toString() : threshold.minCelsius.toString())
+        : "";
+      const maxTemp = threshold.maxCelsius !== null
+        ? (unit === "F" ? celsiusToFahrenheit(threshold.maxCelsius).toString() : threshold.maxCelsius.toString())
+        : "";
       setForm({
         name: threshold.name,
         scope,
-        minCelsius: threshold.minCelsius?.toString() ?? "",
-        maxCelsius: threshold.maxCelsius?.toString() ?? "",
+        unit,
+        minTemp,
+        maxTemp,
         cooldownMinutes: threshold.cooldownMinutes.toString(),
         enabled: threshold.enabled,
       });
@@ -88,8 +100,13 @@ export function TemperatureThresholdForm({
     setSubmitting(true);
     setError(null);
 
-    const minCelsius = form.minCelsius ? parseFloat(form.minCelsius) : null;
-    const maxCelsius = form.maxCelsius ? parseFloat(form.maxCelsius) : null;
+    // Convert from display unit to Celsius for database storage
+    const minCelsius = form.minTemp
+      ? (form.unit === "F" ? fahrenheitToCelsius(parseFloat(form.minTemp)) : parseFloat(form.minTemp))
+      : null;
+    const maxCelsius = form.maxTemp
+      ? (form.unit === "F" ? fahrenheitToCelsius(parseFloat(form.maxTemp)) : parseFloat(form.maxTemp))
+      : null;
 
     if (minCelsius === null && maxCelsius === null) {
       setError("At least min or max temperature is required");
@@ -176,27 +193,49 @@ export function TemperatureThresholdForm({
             </Select>
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="temp-unit">Temperature Unit</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant={form.unit === "C" ? "default" : "outline"}
+                onClick={() => setForm((f) => ({ ...f, unit: "C" }))}
+                className="w-20"
+              >
+                °C
+              </Button>
+              <Button
+                type="button"
+                variant={form.unit === "F" ? "default" : "outline"}
+                onClick={() => setForm((f) => ({ ...f, unit: "F" }))}
+                className="w-20"
+              >
+                °F
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="temp-min">Min Temp (°C)</Label>
+              <Label htmlFor="temp-min">Min Temp ({form.unit === "F" ? "°F" : "°C"})</Label>
               <Input
                 id="temp-min"
                 type="number"
                 step="0.1"
-                value={form.minCelsius}
-                onChange={(e) => setForm((f) => ({ ...f, minCelsius: e.target.value }))}
-                placeholder="0"
+                value={form.minTemp}
+                onChange={(e) => setForm((f) => ({ ...f, minTemp: e.target.value }))}
+                placeholder={form.unit === "F" ? "32" : "0"}
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="temp-max">Max Temp (°C)</Label>
+              <Label htmlFor="temp-max">Max Temp ({form.unit === "F" ? "°F" : "°C"})</Label>
               <Input
                 id="temp-max"
                 type="number"
                 step="0.1"
-                value={form.maxCelsius}
-                onChange={(e) => setForm((f) => ({ ...f, maxCelsius: e.target.value }))}
-                placeholder="100"
+                value={form.maxTemp}
+                onChange={(e) => setForm((f) => ({ ...f, maxTemp: e.target.value }))}
+                placeholder={form.unit === "F" ? "212" : "100"}
               />
             </div>
           </div>

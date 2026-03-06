@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTempUnit } from "@/contexts/temp-unit-context";
+import { formatTemperature } from "@/lib/temperature-utils";
 
 interface AlertRow {
   id: string;
@@ -48,6 +50,7 @@ export function AlertList({
   onAcknowledge,
   onPageChange,
 }: AlertListProps) {
+  const { unit } = useTempUnit();
   return (
     <div className="space-y-3">
       <Table>
@@ -57,7 +60,7 @@ export function AlertList({
             <TableHead>Camera</TableHead>
             <TableHead className="w-[110px]">Type</TableHead>
             <TableHead>Message</TableHead>
-            <TableHead className="w-[90px] text-right">Temp (°C)</TableHead>
+            <TableHead className="w-[90px] text-right">Temp (°{unit})</TableHead>
             <TableHead className="w-[120px]">Status</TableHead>
             <TableHead className="w-[120px]">Actions</TableHead>
           </TableRow>
@@ -87,7 +90,7 @@ export function AlertList({
                 {alert.message}
               </TableCell>
               <TableCell className="text-right tabular-nums">
-                {alert.celsius.toFixed(2)}
+                {formatTemperature(alert.celsius, unit)}
               </TableCell>
               <TableCell>
                 {alert.acknowledged ? (

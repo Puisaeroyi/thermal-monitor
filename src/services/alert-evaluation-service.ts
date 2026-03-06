@@ -3,6 +3,7 @@ import { cooldownManager } from "@/services/cooldown-manager";
 import { thresholdCache } from "@/services/threshold-cache";
 import { gapRingBuffer } from "@/services/gap-ring-buffer";
 import { createAlert } from "@/services/alert-service";
+import type { TemperatureThreshold, GapThreshold } from "@/generated/prisma/client";
 
 /**
  * Evaluate a single reading against all enabled thresholds.
@@ -17,7 +18,7 @@ export async function evaluateReading(
 ): Promise<void> {
   try {
     // ── Temperature thresholds ───────────────────────────────────────────────
-    const tempThresholds = await thresholdCache.getTemperatureThresholds();
+    const tempThresholds = await thresholdCache.getTemperatureThresholds() as TemperatureThreshold[];
     const applicableTemp = tempThresholds.filter(
       (t) =>
         // Global: no camera or group scope
@@ -33,7 +34,7 @@ export async function evaluateReading(
       const breachMax = t.maxCelsius !== null && celsius > t.maxCelsius;
 
       if (!breachMin && !breachMax) continue;
-      if (!cooldownManager.canAlert(t.id, cameraId, t.cooldownMinutes)) continue;
+      if (!(await cooldownManager.canAlert(t.id, cameraId))) continue;
 
       const limit = breachMax ? t.maxCelsius : t.minCelsius;
       const dir = breachMax ? "above" : "below";
@@ -49,14 +50,14 @@ export async function evaluateReading(
         thresholdId: t.id,
       });
 
-      cooldownManager.recordAlert(t.id, cameraId);
+      await cooldownManager.recordAlert(t.id, cameraId, t.cooldownMinutes);
     }
 
     // ── Gap buffer push ──────────────────────────────────────────────────────
     gapRingBuffer.push(cameraId, timestamp, celsius);
 
     // ── Gap thresholds ───────────────────────────────────────────────────────
-    const gapThresholds = await thresholdCache.getGapThresholds();
+    const gapThresholds = await thresholdCache.getGapThresholds() as GapThreshold[];
     const applicableGap = gapThresholds.filter(
       (t) =>
         (t.cameraId === null && t.groupId === null) ||
@@ -81,7 +82,7 @@ export async function evaluateReading(
         (t.direction === GapDirection.DROP && isDrop);
 
       if (!directionMatches) continue;
-      if (!cooldownManager.canAlert(t.id, cameraId, t.cooldownMinutes)) continue;
+      if (!(await cooldownManager.canAlert(t.id, cameraId))) continue;
 
       const dir = isRise ? "rose" : "dropped";
       const message = `Temperature ${dir} ${absDelta.toFixed(2)}°C in ${t.intervalMinutes}min (limit ${t.maxGapCelsius}°C) — ${t.name}`;
@@ -96,7 +97,7 @@ export async function evaluateReading(
         thresholdId: t.id,
       });
 
-      cooldownManager.recordAlert(t.id, cameraId);
+      await cooldownManager.recordAlert(t.id, cameraId, t.cooldownMinutes);
     }
   } catch (err) {
     console.error("[alert-evaluation-service] Error evaluating reading:", err);

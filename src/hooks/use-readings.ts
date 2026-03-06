@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useSSE } from "@/hooks/use-sse";
 import { Reading } from "@/types/reading";
+import { POLLING_INTERVAL_MS } from "@/lib/constants";
 
 interface UseReadingsResult {
   readings: Reading[];
@@ -16,6 +18,7 @@ export function useReadings(cameraId: string, timeRange: number): UseReadingsRes
   const [error, setError] = useState<string | null>(null);
   const lastTimestampRef = useRef<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sseSource = useSSE();
 
   const fetchInitial = useCallback(async () => {
     if (!cameraId) return;
@@ -77,20 +80,56 @@ export function useReadings(cameraId: string, timeRange: number): UseReadingsRes
     }
   }, [cameraId, timeRange]);
 
+  // SSE listener for real-time incremental updates
+  useEffect(() => {
+    if (!sseSource || !cameraId) return;
+
+    const handler = (e: MessageEvent) => {
+      try {
+        const allReadings: Reading[] = JSON.parse(e.data);
+        // Filter readings for this specific camera
+        const cameraReadings = allReadings.filter((r) => r.cameraId === cameraId);
+        if (cameraReadings.length === 0) return;
+
+        const cutoff = Date.now() - timeRange * 60 * 1000;
+        setReadings((prev) => {
+          const merged = [...prev, ...cameraReadings].filter(
+            (r) => new Date(r.timestamp).getTime() >= cutoff
+          );
+          // deduplicate by id
+          const seen = new Set<string>();
+          return merged.filter((r) => {
+            if (seen.has(r.id)) return false;
+            seen.add(r.id);
+            return true;
+          });
+        });
+      } catch (err) {
+        console.error("[use-readings] SSE parse error:", err);
+      }
+    };
+
+    sseSource.addEventListener("readings", handler);
+    return () => sseSource.removeEventListener("readings", handler);
+  }, [sseSource, cameraId, timeRange]);
+
   // Reset on cameraId or timeRange change
   useEffect(() => {
     setReadings([]);
     fetchInitial();
   }, [fetchInitial]);
 
-  // Start polling after initial load
+  // Start polling after initial load (fallback if SSE unavailable)
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(fetchIncremental, 5000);
+    if (!sseSource) {
+      // Only poll if SSE is not available
+      intervalRef.current = setInterval(fetchIncremental, POLLING_INTERVAL_MS);
+    }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchIncremental]);
+  }, [fetchIncremental, sseSource]);
 
   return { readings, isLoading, error };
 }

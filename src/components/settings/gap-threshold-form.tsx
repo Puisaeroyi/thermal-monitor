@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { celsiusToFahrenheit, fahrenheitToCelsius } from "@/lib/temperature-utils";
 
 interface GapThresholdFormProps {
   open: boolean;
@@ -32,8 +33,9 @@ interface GapThresholdFormProps {
 interface GapForm {
   name: string;
   scope: string; // "all" for global, "group-{id}" for group
+  unit: "C" | "F"; // User-selected unit for input
   intervalMinutes: string;
-  maxGapCelsius: string;
+  maxGap: string; // Display value in selected unit
   direction: GapDirection;
   cooldownMinutes: string;
   enabled: boolean;
@@ -42,8 +44,9 @@ interface GapForm {
 const EMPTY_FORM: GapForm = {
   name: "",
   scope: "all",
+  unit: "F", // Default to Fahrenheit
   intervalMinutes: "10",
-  maxGapCelsius: "10",
+  maxGap: "18", // Default 18°F (≈10°C)
   direction: "BOTH",
   cooldownMinutes: "5",
   enabled: true,
@@ -70,11 +73,17 @@ export function GapThresholdForm({
       } else if (threshold.cameraId) {
         scope = "camera-" + threshold.cameraId;
       }
+      // Default to Fahrenheit for editing, convert from Celsius
+      const unit: "C" | "F" = "F";
+      const maxGap = unit === "F"
+        ? celsiusToFahrenheit(threshold.maxGapCelsius).toString()
+        : threshold.maxGapCelsius.toString();
       setForm({
         name: threshold.name,
         scope,
+        unit,
         intervalMinutes: threshold.intervalMinutes.toString(),
-        maxGapCelsius: threshold.maxGapCelsius.toString(),
+        maxGap,
         direction: threshold.direction,
         cooldownMinutes: threshold.cooldownMinutes.toString(),
         enabled: threshold.enabled,
@@ -90,6 +99,12 @@ export function GapThresholdForm({
     setSubmitting(true);
     setError(null);
 
+    // Convert from display unit to Celsius for database storage
+    // Note: For gap/threshold, we convert the delta (1°C delta = 1.8°F delta)
+    const maxGapCelsius = form.unit === "F"
+      ? parseFloat(form.maxGap) / 1.8
+      : parseFloat(form.maxGap);
+
     try {
       const url = isEdit
         ? `/api/thresholds/gap/${threshold!.id}`
@@ -101,7 +116,7 @@ export function GapThresholdForm({
         cameraId: null as string | null,
         groupId: null as string | null,
         intervalMinutes: parseInt(form.intervalMinutes, 10),
-        maxGapCelsius: parseFloat(form.maxGapCelsius),
+        maxGapCelsius,
         direction: form.direction,
         cooldownMinutes: parseInt(form.cooldownMinutes, 10),
         enabled: form.enabled,
@@ -170,6 +185,28 @@ export function GapThresholdForm({
             </Select>
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="gap-unit">Temperature Unit</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant={form.unit === "C" ? "default" : "outline"}
+                onClick={() => setForm((f) => ({ ...f, unit: "C" }))}
+                className="w-20"
+              >
+                °C
+              </Button>
+              <Button
+                type="button"
+                variant={form.unit === "F" ? "default" : "outline"}
+                onClick={() => setForm((f) => ({ ...f, unit: "F" }))}
+                className="w-20"
+              >
+                °F
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="gap-interval">Interval (minutes)</Label>
@@ -183,14 +220,15 @@ export function GapThresholdForm({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="gap-max">Max Gap (°C)</Label>
+              <Label htmlFor="gap-max">Max Gap ({form.unit === "F" ? "°F" : "°C"})</Label>
               <Input
                 id="gap-max"
                 type="number"
                 step="0.1"
                 min="0"
-                value={form.maxGapCelsius}
-                onChange={(e) => setForm((f) => ({ ...f, maxGapCelsius: e.target.value }))}
+                value={form.maxGap}
+                onChange={(e) => setForm((f) => ({ ...f, maxGap: e.target.value }))}
+                placeholder={form.unit === "F" ? "18" : "10"}
                 required
               />
             </div>

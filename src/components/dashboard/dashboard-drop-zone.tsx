@@ -8,7 +8,7 @@ import { CameraCard } from "@/components/dashboard/camera-card";
 import type { DashboardPanel } from "@/hooks/use-dashboard-layout";
 import type { CameraReading } from "@/hooks/use-cameras";
 import type { TemperatureThreshold } from "@/types/threshold";
-import type { TempUnit } from "@/components/layout/header";
+import type { TempUnit } from "@/contexts/temp-unit-context";
 
 interface DashboardDropZoneProps {
   panels: DashboardPanel[];

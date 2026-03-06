@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { CameraCard } from "@/components/dashboard/camera-card";
 import type { CameraReading } from "@/hooks/use-cameras";
 import type { TemperatureThreshold } from "@/types/threshold";
-import type { TempUnit } from "@/components/layout/header";
+import type { TempUnit } from "@/contexts/temp-unit-context";
 
 interface CameraGridProps {
   cameras: CameraReading[];

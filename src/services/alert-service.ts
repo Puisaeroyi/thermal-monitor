@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AlertType } from "@/generated/prisma/client";
 import { ALERTS_PAGE_SIZE } from "@/lib/constants";
 import { sendAlertEmail } from "@/services/email-service";
+import { publishAlert } from "@/lib/redis-pubsub";
 
 export interface CreateAlertInput {
   cameraId: string;
@@ -49,6 +50,11 @@ export async function createAlert(input: CreateAlertInput) {
       console.error("[alert-service] Email dispatch failed:", err)
     );
   }
+
+  // Publish alert to Redis for SSE distribution (fire-and-forget)
+  publishAlert(alert).catch((err) =>
+    console.error("[alert-service] Publish alert error:", err)
+  );
 
   return alert;
 }

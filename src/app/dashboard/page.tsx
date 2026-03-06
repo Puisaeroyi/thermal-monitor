@@ -9,9 +9,7 @@ import { StatusSummary } from "@/components/dashboard/status-summary";
 import { DashboardDragPalette } from "@/components/dashboard/dashboard-drag-palette";
 import { DashboardDropZone } from "@/components/dashboard/dashboard-drop-zone";
 import { Button } from "@/components/ui/button";
-import type { TempUnit } from "@/components/layout/header";
-
-const UNIT_KEY = "thermal-temp-unit";
+import { useTempUnit } from "@/contexts/temp-unit-context";
 
 interface Group {
   id: string;
@@ -43,19 +41,8 @@ export default function DashboardPage() {
   const { cameras, thresholds, isLoading, error } = useCameras();
   const { panels, loaded, addPanel, removePanel, clearAll } = useDashboardLayout();
   const [unit, setUnit] = useState<TempUnit>("C");
-  const [alertStats, setAlertStats] = useState({ total: 0, acknowledged: 0, unacknowledged: 0 });
+  const [alertCount, setAlertCount] = useState(0);
   const [groups, setGroups] = useState<Group[]>([]);
-
-  // Sync temperature unit from localStorage (set by header)
-  useEffect(() => {
-    function syncUnit() {
-      const stored = localStorage.getItem(UNIT_KEY) as TempUnit | null;
-      if (stored === "C" || stored === "F") setUnit(stored);
-    }
-    syncUnit();
-    window.addEventListener("storage", syncUnit);
-    return () => window.removeEventListener("storage", syncUnit);
-  }, []);
 
   // Fetch groups for the drag palette
   const fetchGroups = useCallback(async () => {

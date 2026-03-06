@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, MapPin } from "lucide-react";
+import Link from "next/link";
 import { useCameras } from "@/hooks/use-cameras";
 import { useDashboardLayout } from "@/hooks/use-dashboard-layout";
 import { StatusSummary } from "@/components/dashboard/status-summary";
@@ -42,7 +43,7 @@ export default function DashboardPage() {
   const { cameras, thresholds, isLoading, error } = useCameras();
   const { panels, loaded, addPanel, removePanel, clearAll } = useDashboardLayout();
   const [unit, setUnit] = useState<TempUnit>("C");
-  const [alertCount, setAlertCount] = useState(0);
+  const [alertStats, setAlertStats] = useState({ total: 0, acknowledged: 0, unacknowledged: 0 });
   const [groups, setGroups] = useState<Group[]>([]);
 
   // Sync temperature unit from localStorage (set by header)
@@ -71,19 +72,19 @@ export default function DashboardPage() {
     fetchGroups();
   }, [fetchGroups]);
 
-  // Fetch unacknowledged alert count once on mount
+  // Fetch alert stats once on mount
   useEffect(() => {
-    async function fetchAlertCount() {
+    async function fetchAlertStats() {
       try {
-        const res = await fetch("/api/alerts?count=unacknowledged");
+        const res = await fetch("/api/alerts?stats=true");
         if (!res.ok) return;
         const data = await res.json();
-        setAlertCount(typeof data.count === "number" ? data.count : 0);
+        setAlertStats(data);
       } catch {
         // Non-critical
       }
     }
-    fetchAlertCount();
+    fetchAlertStats();
   }, []);
 
   const activePanelIds = panels.map((p) => p.id);
@@ -115,7 +116,7 @@ export default function DashboardPage() {
         <DashboardSkeleton />
       ) : (
         <>
-          <StatusSummary cameras={cameras} alertCount={alertCount} />
+          <StatusSummary cameras={cameras} alertStats={alertStats} />
 
           <div className="flex gap-6">
             {/* Left: drag palette */}
@@ -138,6 +139,30 @@ export default function DashboardPage() {
           <div className="md:hidden">
             <DashboardDragPalette groups={groups} activePanelIds={activePanelIds} />
           </div>
+
+          {/* Navigation section */}
+          {groups.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="size-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Navigation</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {groups.map((group) => (
+                  <Link key={group.id} href={`/groups/${group.id}`}>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      style={{ borderColor: group.color, color: group.color }}
+                    >
+                      <MapPin className="size-4" />
+                      {group.name}
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

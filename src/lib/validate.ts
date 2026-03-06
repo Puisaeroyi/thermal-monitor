@@ -6,6 +6,8 @@ export interface CameraInput {
   location: string;
   status?: "ACTIVE" | "INACTIVE";
   groupId?: string | null;
+  ipAddress?: string | null;
+  modelName?: string | null;
 }
 
 export interface ReadingInput {
@@ -76,6 +78,8 @@ export function validateCameraInput(
     location: d.location as string,
     status: d.status as "ACTIVE" | "INACTIVE" | undefined,
     groupId: d.groupId as string | null | undefined,
+    ipAddress: (d.ipAddress as string | null | undefined) ?? null,
+    modelName: (d.modelName as string | null | undefined) ?? null,
   };
 }
 

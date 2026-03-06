@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listAlerts, getUnacknowledgedCount } from "@/services/alert-service";
+import { listAlerts, getUnacknowledgedCount, getAlertStats } from "@/services/alert-service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -8,6 +8,12 @@ export async function GET(req: NextRequest) {
     // Support ?count=unacknowledged as a shortcut
     if (searchParams.get("count") === "unacknowledged") {
       const result = await getUnacknowledgedCount();
+      return NextResponse.json(result);
+    }
+
+    // Support ?stats=true for dashboard summary
+    if (searchParams.get("stats") === "true") {
+      const result = await getAlertStats();
       return NextResponse.json(result);
     }
 

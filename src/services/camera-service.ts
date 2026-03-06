@@ -40,7 +40,9 @@ export async function createCamera(input: CameraInput) {
       name: input.name,
       location: input.location,
       status: input.status ? (input.status as CameraStatus) : CameraStatus.ACTIVE,
-      groupId: input.groupId || null,
+      ...(input.groupId ? { group: { connect: { id: input.groupId } } } : {}),
+      ipAddress: input.ipAddress || null,
+      modelName: input.modelName || null,
     },
   });
 }
@@ -54,10 +56,12 @@ export async function updateCamera(
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.location !== undefined && { location: input.location }),
-      ...(input.status !== undefined && {
-        status: input.status as CameraStatus,
+      ...(input.status !== undefined && { status: input.status as CameraStatus }),
+      ...(input.groupId !== undefined && {
+        group: input.groupId ? { connect: { id: input.groupId } } : { disconnect: true },
       }),
-      ...(input.groupId !== undefined && { groupId: input.groupId }),
+      ...(input.ipAddress !== undefined && { ipAddress: input.ipAddress }),
+      ...(input.modelName !== undefined && { modelName: input.modelName }),
     },
   });
 }

@@ -4,6 +4,8 @@ export interface Camera {
   location: string;
   status: "ACTIVE" | "INACTIVE";
   groupId: string | null;
+  ipAddress?: string | null;
+  modelName?: string | null;
   group?: {
     id: string;
     name: string;

@@ -110,3 +110,11 @@ export async function getUnacknowledgedCount() {
   });
   return { count };
 }
+
+export async function getAlertStats() {
+  const [total, acknowledged] = await Promise.all([
+    prisma.alert.count(),
+    prisma.alert.count({ where: { acknowledged: true } }),
+  ]);
+  return { total, acknowledged, unacknowledged: total - acknowledged };
+}

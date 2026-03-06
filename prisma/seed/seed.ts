@@ -26,6 +26,22 @@ async function main() {
       console.log("Cleared.");
     }
 
+    // Seed default users
+    console.log("Seeding users...");
+    const defaultUsers = [
+      { username: "operator", password: "123456", role: "operator", firstLogin: false },
+      { username: "admin", password: "123456", role: "admin", firstLogin: false },
+      { username: "tempus", password: "654321", role: "admin", firstLogin: false },
+    ];
+    for (const u of defaultUsers) {
+      await prisma.user.upsert({
+        where: { username: u.username },
+        update: {},
+        create: u,
+      });
+    }
+    console.log(`  ${defaultUsers.length} users seeded.`);
+
     // Create groups
     console.log(`Creating ${groupSeedData.length} groups...`);
     const groupMap = new Map<string, string>();

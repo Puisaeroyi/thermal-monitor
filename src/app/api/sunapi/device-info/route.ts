@@ -31,11 +31,13 @@ export async function POST(req: NextRequest) {
     }
 
     const ip = camera.ipAddress;
-    const username = process.env.SUNAPI_USERNAME ?? "admin";
-    const password = process.env.SUNAPI_PASSWORD ?? "";
+    const port = camera.port ?? 80;
+    const username = camera.username || process.env.SUNAPI_USERNAME || "admin";
+    const password = camera.password || process.env.SUNAPI_PASSWORD || "";
 
     // Build digest auth header via a two-step fetch
-    const url = `http://${ip}/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view`;
+    const protocol = port === 443 ? "https" : "http";
+    const url = `${protocol}://${ip}:${port}/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view`;
 
     // First request to get WWW-Authenticate challenge
     const firstRes = await fetch(url, { signal: AbortSignal.timeout(5000) });

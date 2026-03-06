@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { Settings, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { InteractiveMap } from "@/components/groups/interactive-map";
+import { MapUploadButton } from "@/components/groups/map-upload-button";
 
 interface GroupInfo {
   id: string;
   name: string;
   color: string;
+  mapImage: string | null;
   cameraCount: number;
 }
 
@@ -23,24 +24,36 @@ interface Camera {
   status: "ACTIVE" | "INACTIVE";
 }
 
+interface Pin {
+  id: string;
+  cameraId: string;
+  x: number;
+  y: number;
+  camera: { cameraId: string; name: string; status: "ACTIVE" | "INACTIVE" };
+}
+
 export default function ZonePage() {
   const { zoneId } = useParams<{ zoneId: string }>();
   const [group, setGroup] = useState<GroupInfo | null>(null);
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [pins, setPins] = useState<Pin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       setIsLoading(true);
       try {
-        const [groupsRes, camerasRes] = await Promise.all([
+        const [groupsRes, camerasRes, pinsRes] = await Promise.all([
           fetch("/api/groups"),
           fetch(`/api/groups/${zoneId}/cameras`),
+          fetch(`/api/groups/${zoneId}/pins`),
         ]);
         const groups: GroupInfo[] = groupsRes.ok ? await groupsRes.json() : [];
         const cams: Camera[] = camerasRes.ok ? await camerasRes.json() : [];
+        const pinData: Pin[] = pinsRes.ok ? await pinsRes.json() : [];
         setGroup(groups.find((g) => g.id === zoneId) ?? null);
         setCameras(cams);
+        setPins(pinData);
       } catch {
         // silent
       } finally {
@@ -64,9 +77,9 @@ export default function ZonePage() {
         </Link>
       </div>
 
-      {/* Two-column layout — fills remaining height */}
+      {/* Two-column layout */}
       <div className="flex gap-6 flex-1 min-h-0">
-        {/* Left: Camera List — fixed narrow width */}
+        {/* Left: Camera List */}
         <Card className="flex flex-col w-72 shrink-0">
           <CardHeader className="pb-3 shrink-0">
             <CardTitle className="text-base">
@@ -111,18 +124,31 @@ export default function ZonePage() {
           </CardContent>
         </Card>
 
-        {/* Right: Map View — takes all remaining space */}
+        {/* Right: Interactive Map */}
         <Card className="flex flex-col flex-1 min-w-0">
-          <CardHeader className="pb-3 shrink-0">
+          <CardHeader className="pb-3 shrink-0 flex flex-row items-center justify-between">
             <CardTitle className="text-base">Map View</CardTitle>
+            {group && (
+              <MapUploadButton
+                groupId={zoneId}
+                hasMap={!!group.mapImage}
+                onUploaded={(path) =>
+                  setGroup((prev) => (prev ? { ...prev, mapImage: path } : prev))
+                }
+                onDeleted={() => {
+                  setGroup((prev) => (prev ? { ...prev, mapImage: null } : prev));
+                  setPins([]);
+                }}
+              />
+            )}
           </CardHeader>
           <CardContent className="flex-1 relative p-2 min-h-0">
-            <Image
-              src="/map.jpg"
-              alt="Zone Map"
-              fill
-              className="object-contain rounded-md"
-              priority
+            <InteractiveMap
+              groupId={zoneId}
+              mapImage={group?.mapImage ?? null}
+              pins={pins}
+              cameras={cameras}
+              onPinsChange={setPins}
             />
           </CardContent>
         </Card>

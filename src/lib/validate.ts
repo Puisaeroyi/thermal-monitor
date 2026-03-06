@@ -7,6 +7,9 @@ export interface CameraInput {
   status?: "ACTIVE" | "INACTIVE";
   groupId?: string | null;
   ipAddress?: string | null;
+  port?: number;
+  username?: string | null;
+  password?: string | null;
   modelName?: string | null;
 }
 
@@ -79,6 +82,9 @@ export function validateCameraInput(
     status: d.status as "ACTIVE" | "INACTIVE" | undefined,
     groupId: d.groupId as string | null | undefined,
     ipAddress: (d.ipAddress as string | null | undefined) ?? null,
+    port: typeof d.port === "number" ? d.port : undefined,
+    username: (d.username as string | null | undefined) ?? null,
+    password: (d.password as string | null | undefined) ?? null,
     modelName: (d.modelName as string | null | undefined) ?? null,
   };
 }
@@ -144,6 +150,80 @@ export function validateReadingBatch(data: unknown): ReadingInput[] {
       throw new ValidationError(
         `Reading at index ${i}: ${(e as Error).message}`
       );
+    }
+  });
+}
+
+/** Input from Python RTSP collector script */
+export interface TemperatureReadingInput {
+  ts_utc: string;
+  camera: string;
+  host: string;
+  roi: string;
+  min_temperature: number | null;
+  max_temperature: number | null;
+  avg_temperature: number | null;
+  unit: string;
+  status?: string;
+}
+
+/** Validate a single temperature reading from the collector script */
+export function validateTemperatureReading(data: unknown): TemperatureReadingInput {
+  if (!data || typeof data !== "object") {
+    throw new ValidationError("Temperature reading must be an object");
+  }
+  const d = data as Record<string, unknown>;
+
+  if (!d.ts_utc || typeof d.ts_utc !== "string") {
+    throw new ValidationError("ts_utc must be a non-empty string");
+  }
+  const ts = new Date(d.ts_utc);
+  if (isNaN(ts.getTime())) {
+    throw new ValidationError("ts_utc must be a valid ISO date string");
+  }
+  if (!d.camera || typeof d.camera !== "string") {
+    throw new ValidationError("camera must be a non-empty string");
+  }
+  if (!d.host || typeof d.host !== "string") {
+    throw new ValidationError("host must be a non-empty string");
+  }
+
+  // Temperature values can be null (camera failure)
+  for (const key of ["min_temperature", "max_temperature", "avg_temperature"] as const) {
+    if (d[key] !== null && d[key] !== undefined && typeof d[key] !== "number") {
+      throw new ValidationError(`${key} must be a number or null`);
+    }
+  }
+
+  return {
+    ts_utc: d.ts_utc as string,
+    camera: d.camera as string,
+    host: d.host as string,
+    roi: (d.roi as string) || "UNKNOWN",
+    min_temperature: (d.min_temperature as number | null) ?? null,
+    max_temperature: (d.max_temperature as number | null) ?? null,
+    avg_temperature: (d.avg_temperature as number | null) ?? null,
+    unit: (d.unit as string) || "Fahrenheit",
+    status: d.status as string | undefined,
+  };
+}
+
+/** Validate a batch of temperature readings from the collector script */
+export function validateTemperatureReadingBatch(data: unknown): TemperatureReadingInput[] {
+  if (!Array.isArray(data)) {
+    throw new ValidationError("Temperature readings must be an array");
+  }
+  if (data.length === 0) {
+    throw new ValidationError("Temperature readings array must not be empty");
+  }
+  if (data.length > MAX_BATCH_SIZE) {
+    throw new ValidationError(`Batch size exceeds maximum of ${MAX_BATCH_SIZE}`);
+  }
+  return data.map((item, i) => {
+    try {
+      return validateTemperatureReading(item);
+    } catch (e) {
+      throw new ValidationError(`Reading at index ${i}: ${(e as Error).message}`);
     }
   });
 }

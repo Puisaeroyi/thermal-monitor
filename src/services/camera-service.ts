@@ -40,8 +40,11 @@ export async function createCamera(input: CameraInput) {
       name: input.name,
       location: input.location,
       status: input.status ? (input.status as CameraStatus) : CameraStatus.ACTIVE,
-      ...(input.groupId ? { group: { connect: { id: input.groupId } } } : {}),
+      ...(input.groupId ? { groupId: input.groupId } : {}),
       ipAddress: input.ipAddress || null,
+      port: input.port ?? 80,
+      username: input.username || null,
+      password: input.password || null,
       modelName: input.modelName || null,
     },
   });
@@ -61,6 +64,9 @@ export async function updateCamera(
         group: input.groupId ? { connect: { id: input.groupId } } : { disconnect: true },
       }),
       ...(input.ipAddress !== undefined && { ipAddress: input.ipAddress }),
+      ...(input.port !== undefined && { port: input.port }),
+      ...(input.username !== undefined && { username: input.username }),
+      ...(input.password !== undefined && { password: input.password }),
       ...(input.modelName !== undefined && { modelName: input.modelName }),
     },
   });

@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# camera credentials config (contains passwords)
+data/cameras-config.json
+
+# user-uploaded content
+public/uploads/

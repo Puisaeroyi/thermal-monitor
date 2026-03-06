@@ -155,7 +155,8 @@ export async function listAlerts(params: ListAlertsParams = {}) {
 
   const enrichedAlerts = alerts.map((alert, index) => ({
     ...alert,
-    eventId: skip + index + 1,
+    // Stable sequential ID: newest-first → count down from total, oldest-first → count up
+    eventId: sort === "desc" ? total - skip - index : skip + index + 1,
     displayType: mapDisplayType(alert.type),
     statusLabel: alert.acknowledged ? "Checked" : "Unchecked",
     shortMessage: buildShortMessage(alert),

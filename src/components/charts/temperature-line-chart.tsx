@@ -95,6 +95,7 @@ export function TemperatureLineChart({ readings, thresholds = [] }: TemperatureL
           stroke="#2563eb"
           strokeWidth={2}
           dot={false}
+          connectNulls={false}
           isAnimationActive={false}
         />
         {thresholds.flatMap((t) => {

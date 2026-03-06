@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSSE } from "@/hooks/use-sse";
 import { usePolling } from "@/hooks/use-polling";
 import type { TemperatureThreshold } from "@/types/threshold";
@@ -14,6 +14,12 @@ export interface CameraReading {
   groupId: string | null;
   celsius: number | null;
   timestamp: string | null;
+
+  // 🔥 Added for mini chart
+  history?: {
+    timestamp: string;
+    celsius: number;
+  }[];
 }
 
 export interface UseCamerasResult {
@@ -23,23 +29,61 @@ export interface UseCamerasResult {
   error: Error | null;
 }
 
-/**
- * Uses SSE for real-time camera readings with polling fallback.
- * Fetches temperature thresholds once on mount for color coding.
- */
 export function useCameras(): UseCamerasResult {
   const [thresholds, setThresholds] = useState<TemperatureThreshold[]>([]);
   const [cameras, setCameras] = useState<CameraReading[]>([]);
   const sseSource = useSSE();
 
-  // SSE primary: listen for readings events
+  /**
+   * Merge incoming readings into previous state
+   * and keep last 20 temperature points per camera
+   */
+  const mergeHistory = useCallback(
+  (prev: CameraReading[], incoming: CameraReading[]): CameraReading[] => {
+    const prevMap = new Map(prev.map((c) => [c.cameraId, c]));
+
+    // remove duplicates from incoming
+    const incomingMap = new Map(
+      incoming.map((c) => [c.cameraId, c])
+    );
+
+    incomingMap.forEach((cam) => {
+      const existing = prevMap.get(cam.cameraId);
+
+      const newHistory = [
+        ...(existing?.history ?? []),
+        ...(cam.celsius !== null && cam.timestamp
+          ? [{ timestamp: cam.timestamp, celsius: cam.celsius }]
+          : []),
+      ]
+        .filter(
+          (v, i, arr) =>
+            arr.findIndex((x) => x.timestamp === v.timestamp) === i
+        )
+        .slice(-20);
+
+      prevMap.set(cam.cameraId, {
+        ...cam,
+        history: newHistory,
+      });
+    });
+
+    return Array.from(prevMap.values());
+  },
+  []
+);
+
+  // ========================
+  // SSE PRIMARY SOURCE
+  // ========================
   useEffect(() => {
     if (!sseSource) return;
 
     const handler = (e: MessageEvent) => {
       try {
-        const data = JSON.parse(e.data);
-        setCameras(data);
+        const data: CameraReading[] = JSON.parse(e.data);
+
+        setCameras((prev) => mergeHistory(prev, data));
       } catch (err) {
         console.error("[use-cameras] SSE parse error:", err);
       }
@@ -47,9 +91,11 @@ export function useCameras(): UseCamerasResult {
 
     sseSource.addEventListener("readings", handler);
     return () => sseSource.removeEventListener("readings", handler);
-  }, [sseSource]);
+  }, [sseSource, mergeHistory]);
 
-  // Fallback to polling if SSE unavailable
+  // ========================
+  // POLLING FALLBACK
+  // ========================
   const {
     data: polledCameras,
     error: pollingError,
@@ -60,23 +106,26 @@ export function useCameras(): UseCamerasResult {
 
   useEffect(() => {
     if (polledCameras && !sseSource) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCameras(polledCameras);
+      setCameras((prev) => mergeHistory(prev, polledCameras));
     }
-  }, [polledCameras, sseSource]);
+  }, [polledCameras, sseSource, mergeHistory]);
 
-  // Fetch thresholds once on mount
+  // ========================
+  // FETCH THRESHOLDS (once)
+  // ========================
   useEffect(() => {
     async function fetchThresholds() {
       try {
         const res = await fetch("/api/thresholds/temperature");
         if (!res.ok) return;
+
         const data: TemperatureThreshold[] = await res.json();
         setThresholds(data);
       } catch {
-        // Non-critical — color coding falls back to "normal"
+        // non-critical
       }
     }
+
     fetchThresholds();
   }, []);
 

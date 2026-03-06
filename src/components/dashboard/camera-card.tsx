@@ -82,12 +82,19 @@ const CameraCard = React.memo(function CameraCard({
           </p>
         </div>
 
-        {/* Large temperature reading */}
+        {/* Large temperature reading (avg) */}
         <div
           className={cn("text-3xl font-bold tabular-nums", STATUS_TEMP_COLOR[status])}
         >
           {tempDisplay}
         </div>
+
+        {/* Min/Max range — only for cameras with range data */}
+        {camera.minCelsius != null && camera.maxCelsius != null && (
+          <p className="text-xs text-muted-foreground tabular-nums truncate">
+            {formatTemperature(camera.minCelsius, unit)} – {formatTemperature(camera.maxCelsius, unit)}
+          </p>
+        )}
 
         {/* Last seen timestamp — only show if stale (>5min) or missing */}
         {showTimestamp && (

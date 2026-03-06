@@ -34,9 +34,11 @@ interface CameraForm {
   location: string;
   status: "ACTIVE" | "INACTIVE";
   groupId: string;
+  ipAddress: string;
+  modelName: string;
 }
 
-const EMPTY_FORM: CameraForm = { cameraId: "", name: "", location: "", status: "ACTIVE", groupId: "none" };
+const EMPTY_FORM: CameraForm = { cameraId: "", name: "", location: "", status: "ACTIVE", groupId: "none", ipAddress: "", modelName: "" };
 
 /** Dialog for creating a new camera or editing an existing one. */
 export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess }: CameraFormDialogProps) {
@@ -47,7 +49,7 @@ export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess
 
   useEffect(() => {
     if (camera) {
-      setForm({ cameraId: camera.cameraId, name: camera.name, location: camera.location, status: camera.status, groupId: camera.groupId || "none" });
+      setForm({ cameraId: camera.cameraId, name: camera.name, location: camera.location, status: camera.status, groupId: camera.groupId || "none", ipAddress: camera.ipAddress ?? "", modelName: camera.modelName ?? "" });
     } else {
       setForm(EMPTY_FORM);
     }
@@ -62,8 +64,8 @@ export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess
       const url = isEdit ? `/api/cameras/${camera!.cameraId}` : "/api/cameras";
       const method = isEdit ? "PUT" : "POST";
       const body = isEdit
-        ? { name: form.name, location: form.location, status: form.status, groupId: form.groupId === "none" ? null : form.groupId }
-        : { cameraId: form.cameraId, name: form.name, location: form.location, groupId: form.groupId === "none" ? null : form.groupId };
+        ? { name: form.name, location: form.location, status: form.status, groupId: form.groupId === "none" ? null : form.groupId, ipAddress: form.ipAddress || null, modelName: form.modelName || null }
+        : { cameraId: form.cameraId, name: form.name, location: form.location, groupId: form.groupId === "none" ? null : form.groupId, ipAddress: form.ipAddress || null, modelName: form.modelName || null };
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -119,6 +121,24 @@ export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess
               onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
               placeholder="Building 1, Floor 2"
               required
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ipAddress">IP Address</Label>
+            <Input
+              id="ipAddress"
+              value={form.ipAddress}
+              onChange={(e) => setForm((f) => ({ ...f, ipAddress: e.target.value }))}
+              placeholder="192.168.1.100"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="modelName">Model Name</Label>
+            <Input
+              id="modelName"
+              value={form.modelName}
+              onChange={(e) => setForm((f) => ({ ...f, modelName: e.target.value }))}
+              placeholder="e.g., FLIR A320"
             />
           </div>
           <div className="flex flex-col gap-1.5">

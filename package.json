@@ -10,7 +10,9 @@
     "db:seed": "tsx prisma/seed/seed.ts --clear --hours=24",
     "db:seed-live": "tsx scripts/seed-live.ts",
     "db:reset": "npx prisma migrate reset --force",
-    "db:studio": "npx prisma studio"
+    "db:studio": "npx prisma studio",
+    "db:import-xlsx": "tsx scripts/import-xlsx.ts",
+    "db:replay-live": "tsx scripts/replay-live.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed/seed.ts"
@@ -34,7 +36,8 @@
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

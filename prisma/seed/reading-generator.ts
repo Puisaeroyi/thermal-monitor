@@ -1,5 +1,14 @@
 import type { CameraSeed } from "./camera-seed-data";
 
+/** Simple hash to derive a per-camera numeric offset from cameraId */
+function hashCameraId(cameraId: string): number {
+  let h = 0;
+  for (let i = 0; i < cameraId.length; i++) {
+    h = (h * 31 + cameraId.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
 /** Generate a single temperature reading with realistic patterns */
 export function generateReading(
   camera: CameraSeed,
@@ -9,8 +18,9 @@ export function generateReading(
   const hours = timestamp.getHours() + timestamp.getMinutes() / 60;
   // Daily sine wave: peaks at 14:00, trough at 02:00
   const dailyVariance = Math.sin(((hours - 2) / 24) * Math.PI * 2) * 5;
-  // Deterministic-ish noise from timestamp
-  const noiseSeed = seed ?? timestamp.getTime();
+  // Per-camera noise: combine timestamp with camera-specific hash
+  const camHash = hashCameraId(camera.cameraId);
+  const noiseSeed = (seed ?? timestamp.getTime()) + camHash;
   const noise = (Math.sin(noiseSeed * 12.9898 + 78.233) * 43758.5453) % 1;
   const randomNoise = (noise - 0.5) * 2; // range: -1 to +1
   // 2% spike chance for alert testing

@@ -16,12 +16,12 @@ export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProp
   const { unit } = useTempUnit();
   const lastUpdated = latestReading
     ? new Date(latestReading.timestamp).toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "No data";
 
   return (
@@ -39,7 +39,7 @@ export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProp
       <div className="flex flex-col items-end gap-1">
         {latestReading != null ? (
           <span className="text-5xl font-bold tabular-nums">
-            {formatTemperature(latestReading.celsius, unit)}
+            {latestReading.celsius.toFixed(1)}°C
           </span>
         ) : (
           <span className="text-3xl font-bold text-muted-foreground">—</span>

@@ -45,9 +45,8 @@ export default function CamerasPage() {
         fetch("/api/groups"),
       ]);
       const cams: Camera[] = camsRes.ok ? await camsRes.json() : [];
-      const latest: { cameraId: string; celsius: number; timestamp: string }[] = latestRes.ok
-        ? await latestRes.json()
-        : [];
+      const latest: { cameraId: string; celsius: number; timestamp: string }[] =
+        latestRes.ok ? await latestRes.json() : [];
       const groupsData: Group[] = groupsRes.ok ? await groupsRes.json() : [];
       const latestMap = new Map(latest.map((r) => [r.cameraId, r]));
       const merged: CameraWithTemp[] = cams.map((c) => ({
@@ -78,7 +77,9 @@ export default function CamerasPage() {
   async function handleDelete(cameraId: string) {
     if (!confirm(`Delete camera "${cameraId}"? This cannot be undone.`)) return;
     try {
-      await fetch(`/api/cameras/${encodeURIComponent(cameraId)}`, { method: "DELETE" });
+      await fetch(`/api/cameras/${encodeURIComponent(cameraId)}`, {
+        method: "DELETE",
+      });
       fetchCameras();
     } catch {
       // silent
@@ -118,7 +119,12 @@ export default function CamerasPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Cameras</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleAddGroupClick}>Add Group</Button>
+          <Button variant="outline" onClick={handleAddGroupClick}>
+            Export Excel
+          </Button>
+          <Button variant="outline" onClick={handleAddGroupClick}>
+            Add Group
+          </Button>
           <Button onClick={handleAddClick}>Add Camera</Button>
         </div>
       </div>
@@ -175,7 +181,11 @@ export default function CamerasPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setGroupDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setGroupDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit">Add</Button>

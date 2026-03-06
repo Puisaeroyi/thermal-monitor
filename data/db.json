@@ -1,0 +1,26 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "manager",
+      "password": "123456",
+      "role": "manager",
+      "firstLogin": true
+    },
+    {
+      "id": "2",
+      "username": "operator",
+      "password": "123456",
+      "role": "operator",
+      "firstLogin": false
+    },
+    {
+      "id": "3",
+      "username": "tempus",
+      "password": "654321",
+      "role": "admin",
+      "firstLogin": false
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}

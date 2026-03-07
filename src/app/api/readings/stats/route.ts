@@ -6,8 +6,8 @@ export async function GET(req: NextRequest) {
         const { searchParams } = req.nextUrl;
         const cameraIds = searchParams.get("cameraIds")?.split(",").filter(Boolean) ?? [];
         const fromDate = searchParams.get("from"); // e.g. "2026-03-07"
-        const toDate = searchParams.get("to");     // e.g. "2026-03-08"
-        const tz = searchParams.get("tz") || "America/New_York"; // Target installation timezone
+        const toDate = searchParams.get("to");   // e.g. "2026-03-08"
+        const tz = searchParams.get("tz") || "America/New_York";
 
         if (!fromDate || !toDate) {
             return NextResponse.json({ error: "Missing date range" }, { status: 400 });
@@ -17,11 +17,6 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({});
         }
 
-        /**
-         * We use PostgreSQL's 'AT TIME ZONE' to convert UTC timestamps to the target timezone (US)
-         * before filtering. This ensures that '2026-03-07' correctly matches Mar 7 in NY local time,
-         * regardless of whether the developer is in Vietnam, US, or elsewhere.
-         */
         const rows = await prisma.$queryRaw<
             Array<{
                 camera_id: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import * as XLSX from "xlsx";
 import {
     Dialog,
@@ -216,12 +216,14 @@ export function ExportModal({ open, onOpenChange, cameras }: ExportModalProps) {
                 </DialogHeader>
 
                 <div className="flex flex-col gap-5 px-6 py-5 overflow-y-auto">
-                    {/* ───── Date Range ───── */}
+                    {/* ───── Date + Time Range ───── */}
                     <section className="flex flex-col gap-3">
                         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                             <CalendarRange className="size-4 text-muted-foreground" />
                             Time Filter
                         </div>
+
+                        {/* Row 1: dates */}
                         <div className="flex flex-col sm:flex-row gap-3">
                             <div className="flex-1 flex flex-col gap-1.5">
                                 <label
@@ -320,48 +322,49 @@ export function ExportModal({ open, onOpenChange, cameras }: ExportModalProps) {
                                                 const isCollapsed = collapsedGroups.has(group.id);
 
                                                 return (
-                                                    <>
+                                                    <React.Fragment key={`group-frag-${group.id}`}>
                                                         {/* ── Group Header Row ── */}
                                                         <tr
                                                             key={`group-${group.id}`}
                                                             className="bg-muted/40 border-b border-t select-none"
                                                         >
-                                                            <td className="w-10 px-3 py-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={state === "all"}
-                                                                    ref={(el) => {
-                                                                        if (el) el.indeterminate = state === "some";
-                                                                    }}
-                                                                    onChange={() => toggleGroup(group)}
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                    className="size-4 rounded accent-primary cursor-pointer"
-                                                                    aria-label={`Select all in ${group.name}`}
-                                                                />
-                                                            </td>
                                                             <td
-                                                                colSpan={3}
-                                                                className="px-3 py-2 cursor-pointer"
-                                                                onClick={() => toggleCollapse(group.id)}
+                                                                colSpan={4}
+                                                                className="px-3 py-2"
                                                             >
                                                                 <div className="flex items-center gap-2">
-                                                                    {isCollapsed
-                                                                        ? <ChevronRight className="size-3.5 text-muted-foreground" />
-                                                                        : <ChevronDown className="size-3.5 text-muted-foreground" />
-                                                                    }
-                                                                    {/* Zone color dot */}
-                                                                    {group.color && group.id !== "__none__" && (
-                                                                        <span
-                                                                            className="inline-block size-2 rounded-full flex-shrink-0"
-                                                                            style={{ backgroundColor: group.color }}
-                                                                        />
-                                                                    )}
-                                                                    <span className="font-semibold text-xs uppercase tracking-wide text-foreground">
-                                                                        {group.name}
-                                                                    </span>
-                                                                    <span className="text-xs text-muted-foreground font-normal">
-                                                                        ({group.cameras.filter(c => selectedIds.has(c.cameraId)).length}/{group.cameras.length})
-                                                                    </span>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={state === "all"}
+                                                                        ref={(el) => {
+                                                                            if (el) el.indeterminate = state === "some";
+                                                                        }}
+                                                                        onChange={() => toggleGroup(group)}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="size-4 rounded accent-primary cursor-pointer flex-shrink-0"
+                                                                        aria-label={`Select all in ${group.name}`}
+                                                                    />
+                                                                    <div
+                                                                        className="flex items-center gap-2 flex-1 cursor-pointer"
+                                                                        onClick={() => toggleCollapse(group.id)}
+                                                                    >
+                                                                        {isCollapsed
+                                                                            ? <ChevronRight className="size-3.5 text-muted-foreground" />
+                                                                            : <ChevronDown className="size-3.5 text-muted-foreground" />
+                                                                        }
+                                                                        {group.color && group.id !== "__none__" && (
+                                                                            <span
+                                                                                className="inline-block size-2 rounded-full flex-shrink-0"
+                                                                                style={{ backgroundColor: group.color }}
+                                                                            />
+                                                                        )}
+                                                                        <span className="font-semibold text-xs uppercase tracking-wide text-foreground">
+                                                                            {group.name}
+                                                                        </span>
+                                                                        <span className="text-xs text-muted-foreground font-normal">
+                                                                            ({group.cameras.filter(c => selectedIds.has(c.cameraId)).length}/{group.cameras.length})
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -375,7 +378,7 @@ export function ExportModal({ open, onOpenChange, cameras }: ExportModalProps) {
                                                                     className={`border-b last:border-b-0 cursor-pointer transition-colors hover:bg-muted/50 ${isChecked ? "bg-primary/5" : ""}`}
                                                                     onClick={() => toggleRow(cam.cameraId)}
                                                                 >
-                                                                    <td className="w-10 px-3 py-2.5 pl-8">
+                                                                    <td className="w-10 px-3 py-2.5 pl-8 text-left">
                                                                         <input
                                                                             type="checkbox"
                                                                             checked={isChecked}
@@ -397,7 +400,7 @@ export function ExportModal({ open, onOpenChange, cameras }: ExportModalProps) {
                                                                 </tr>
                                                             );
                                                         })}
-                                                    </>
+                                                    </React.Fragment>
                                                 );
                                             })}
                                         </tbody>

@@ -6,6 +6,7 @@ import { CameraTable } from "@/components/cameras/camera-table";
 import { CameraFormDialog } from "@/components/cameras/camera-form-dialog";
 import { Button } from "@/components/ui/button";
 import { useUserRole, isWriteRole } from "@/hooks/use-user-role";
+import { ExportModal } from "@/components/cameras/export-modal";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ export default function CamerasPage() {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupColor, setGroupColor] = useState("#6b7280");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const fetchCameras = useCallback(async () => {
     try {
@@ -122,7 +124,7 @@ export default function CamerasPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Cameras</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleAddGroupClick}>
+          <Button variant="outline" onClick={() => setExportModalOpen(true)}>
             Export Excel
           </Button>
           {canWrite && (
@@ -200,6 +202,11 @@ export default function CamerasPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <ExportModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        cameras={cameras}
+      />
     </div>
   );
 }

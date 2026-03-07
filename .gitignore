@@ -48,3 +48,7 @@ data/cameras-config.json
 
 # user-uploaded content
 public/uploads/
+
+# claude code workspace
+.claude/
+plans/

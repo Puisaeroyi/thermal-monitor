@@ -995,6 +995,8 @@ def process_camera(
             "host": camera.host,
             "roi": "UNKNOWN",
             "max_temperature": None,
+            "min_temperature": None,
+            "avg_temperature": None,
             "unit": "Fahrenheit",
             "status": "failed",
         }
@@ -1012,6 +1014,8 @@ def process_camera(
             continue
 
         max_celsius = row["max_temperature"]
+        min_celsius = row["min_temperature"]
+        avg_celsius = row["avg_temperature"]
 
         payload = {
             "ts_utc": utc_now_iso(),
@@ -1019,6 +1023,8 @@ def process_camera(
             "host": camera.host,
             "roi": row["roi"],
             "max_temperature": celsius_to_fahrenheit(max_celsius),
+            "min_temperature": celsius_to_fahrenheit(min_celsius) if min_celsius is not None else None,
+            "avg_temperature": celsius_to_fahrenheit(avg_celsius) if avg_celsius is not None else None,
             "unit": "Fahrenheit",
         }
 

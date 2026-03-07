@@ -159,6 +159,8 @@ export interface TemperatureReadingInput {
   host: string;
   roi: string;
   max_temperature: number | null;
+  min_temperature: number | null;
+  avg_temperature: number | null;
   unit: string;
   status?: string;
 }
@@ -185,7 +187,7 @@ export function validateTemperatureReading(data: unknown): TemperatureReadingInp
   }
 
   // Temperature values can be null (camera failure)
-  for (const key of ["max_temperature"] as const) {
+  for (const key of ["max_temperature", "min_temperature", "avg_temperature"] as const) {
     if (d[key] !== null && d[key] !== undefined && typeof d[key] !== "number") {
       throw new ValidationError(`${key} must be a number or null`);
     }
@@ -197,6 +199,8 @@ export function validateTemperatureReading(data: unknown): TemperatureReadingInp
     host: d.host as string,
     roi: (d.roi as string) || "UNKNOWN",
     max_temperature: (d.max_temperature as number | null) ?? null,
+    min_temperature: (d.min_temperature as number | null) ?? null,
+    avg_temperature: (d.avg_temperature as number | null) ?? null,
     unit: (d.unit as string) || "Fahrenheit",
     status: d.status as string | undefined,
   };

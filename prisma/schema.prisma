@@ -78,6 +78,7 @@ model Reading {
   celsius    Float    @db.Real
   maxCelsius Float?   @map("max_celsius") @db.Real
   minCelsius Float?   @map("min_celsius") @db.Real
+  avgCelsius Float?   @map("avg_celsius") @db.Real
   timestamp  DateTime @db.Timestamptz()
 
   camera Camera @relation(fields: [cameraId], references: [cameraId], onDelete: Cascade)

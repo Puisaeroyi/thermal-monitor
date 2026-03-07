@@ -11,7 +11,7 @@
     "db:seed-live": "tsx scripts/seed-live.ts",
     "db:reset": "npx prisma migrate reset --force",
     "db:studio": "npx prisma studio",
-    "json": "json-server --watch data/db.json --port 4000"
+    "json": "json-server --watch data/db.json --port 4001"
   },
   "prisma": {
     "seed": "tsx prisma/seed/seed.ts"

@@ -11,6 +11,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { CustomTooltip } from "./custom-tooltip";
+import { useTempUnit } from "@/contexts/temp-unit-context";
+import { celsiusToFahrenheit } from "@/lib/temperature-utils";
 import { useMemo } from "react";
 
 const COLORS = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#9333ea"];
@@ -27,12 +29,12 @@ interface ComparisonChartProps {
 }
 
 /** Merges multiple camera reading series into a shared timestamp-keyed dataset. */
-function mergeDatasets(datasets: CameraDataset[]) {
+function mergeDatasets(datasets: CameraDataset[], toUnit: (v: number) => number) {
   const map = new Map<string, Record<string, number>>();
   for (const ds of datasets) {
     for (const r of ds.readings) {
       if (!map.has(r.timestamp)) map.set(r.timestamp, {});
-      map.get(r.timestamp)![ds.cameraId] = r.celsius;
+      map.get(r.timestamp)![ds.cameraId] = toUnit(r.celsius);
     }
   }
   return Array.from(map.entries())
@@ -48,7 +50,9 @@ function formatXAxis(value: string): string {
 
 /** Multi-line chart comparing temperature across multiple cameras. */
 export function ComparisonChart({ datasets }: ComparisonChartProps) {
-  const merged = useMemo(() => mergeDatasets(datasets), [datasets]);
+  const { unit } = useTempUnit();
+  const toUnit = unit === "F" ? celsiusToFahrenheit : (v: number) => v;
+  const merged = useMemo(() => mergeDatasets(datasets, toUnit), [datasets, toUnit]);
 
   if (datasets.length === 0) {
     return (
@@ -79,10 +83,10 @@ export function ComparisonChart({ datasets }: ComparisonChartProps) {
         <YAxis
           domain={["auto", "auto"]}
           tick={{ fontSize: 12 }}
-          tickFormatter={(v: number) => `${v.toFixed(0)}°`}
-          width={40}
+          tickFormatter={(v: number) => `${v.toFixed(0)}°${unit}`}
+          width={48}
         />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip unitOverride={unit} />} />
         <Legend />
         {datasets.map((ds, i) => (
           <Line

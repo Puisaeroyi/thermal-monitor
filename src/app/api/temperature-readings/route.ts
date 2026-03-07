@@ -127,24 +127,12 @@ export async function POST(req: NextRequest) {
         const maxC = isFahrenheit
           ? fahrenheitToCelsius(r.max_temperature)
           : r.max_temperature;
-        const minC =
-          r.min_temperature !== null
-            ? isFahrenheit
-              ? fahrenheitToCelsius(r.min_temperature)
-              : r.min_temperature
-            : null;
-        const avgC =
-          r.avg_temperature !== null
-            ? isFahrenheit
-              ? fahrenheitToCelsius(r.avg_temperature)
-              : r.avg_temperature
-            : null;
 
         readingsToInsert.push({
           cameraId: camera.cameraId,
-          celsius: avgC ?? maxC,
+          celsius: maxC,
           maxCelsius: maxC,
-          minCelsius: minC,
+          minCelsius: null,
           timestamp: ts,
         });
       }

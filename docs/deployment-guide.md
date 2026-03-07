@@ -33,6 +33,9 @@ npm install
 # Required
 DATABASE_URL="postgresql://user:password@localhost:5432/thermal_monitor"
 
+# Required for camera password encryption (generate with: openssl rand -hex 32)
+CAMERA_ENCRYPTION_KEY="your-64-character-hex-key-here"
+
 # Optional (email notifications)
 SMTP_HOST="localhost"
 SMTP_PORT="1025"
@@ -43,6 +46,8 @@ ALERT_FROM_EMAIL="alerts@thermal.local"
 # Optional (debug mode)
 DEBUG="false"
 ```
+
+**Important:** The `CAMERA_ENCRYPTION_KEY` must be a 64-character hex string (32 bytes). Store this key securely - if lost, all camera passwords become unrecoverable.
 
 ### 3. Initialize Database
 
@@ -72,6 +77,68 @@ npm run dev
 - [ ] Latest readings are non-null
 - [ ] Dark mode toggle works
 - [ ] No console errors in browser DevTools
+- [ ] Camera passwords are encrypted in database (check via psql)
+
+---
+
+## Camera Password Encryption
+
+Camera credentials (username/password) are encrypted at rest using AES-256-GCM.
+
+### How It Works
+
+1. **Encryption Key**: Stored in `CAMERA_ENCRYPTION_KEY` env var (64-char hex string)
+2. **Format**: `enc:v1:<iv_hex>:<authTag_hex>:<ciphertext_hex>`
+3. **Algorithm**: AES-256-GCM (authenticated encryption)
+4. **Cross-language**: Node.js encrypts, Python collector decrypts
+
+### First-Time Setup
+
+```bash
+# Generate encryption key
+openssl rand -hex 32
+
+# Add to .env.local
+echo 'CAMERA_ENCRYPTION_KEY="<output-from-above>"' >> .env.local
+```
+
+### Encrypt Existing Passwords
+
+After adding the key, run the migration script:
+
+```bash
+npx tsx scripts/encrypt-existing-passwords.ts
+```
+
+This encrypts all existing plain-text passwords in the database. Safe to run multiple times (idempotent).
+
+### Key Management
+
+- **Backup**: Store the encryption key in a secure password manager or vault
+- **Rotation**: (Future) Key rotation script planned
+- **Loss**: If key is lost, all camera passwords become unrecoverable
+
+### Docker Compose Setup
+
+```yaml
+services:
+  app:
+    environment:
+      CAMERA_ENCRYPTION_KEY: ${CAMERA_ENCRYPTION_KEY:-}
+```
+
+### Python Collector
+
+The Python collector (`rtsp_metadata_temp_collector.py`) reads directly from the database with `--from-db` flag:
+
+```bash
+python3 rtsp_metadata_temp_collector.py \
+  --from-db \
+  --api-url http://localhost:3000/api/temperature-readings \
+  --interval-seconds 60
+```
+
+Requires `DATABASE_URL` and `CAMERA_ENCRYPTION_KEY` environment variables.
 
 ---
 

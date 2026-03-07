@@ -73,7 +73,8 @@ export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess
         ipAddress: camera.ipAddress ?? "",
         port: String(camera.port ?? 80),
         username: camera.username ?? "",
-        password: camera.password ?? "",
+        // Don't populate password field on edit - user must explicitly change it
+        password: "",
         modelName: camera.modelName ?? "",
       });
       setConnectionTested(true); // existing cameras don't need re-testing
@@ -128,7 +129,7 @@ export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess
       const portNum = Number(form.port) || 80;
       const url = isEdit ? `/api/cameras/${camera!.cameraId}` : "/api/cameras";
       const method = isEdit ? "PUT" : "POST";
-      const body = {
+      const body: Record<string, unknown> = {
         ...(!isEdit && { cameraId: `cam-${Date.now()}` }),
         name: form.name,
         location: form.location,
@@ -136,7 +137,8 @@ export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess
         ipAddress: form.ipAddress || null,
         port: portNum,
         username: form.username || null,
-        password: form.password || null,
+        // Only send password if explicitly entered (edit mode leaves it blank)
+        ...(form.password && { password: form.password }),
         modelName: form.modelName || null,
       };
       const res = await fetch(url, {
@@ -247,13 +249,15 @@ export function CameraFormDialog({ open, onOpenChange, camera, groups, onSuccess
               />
             </div>
             <div className="flex flex-col gap-1.5 flex-1">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">
+                Password {isEdit && <span className="text-muted-foreground text-xs font-normal">(leave blank to keep current)</span>}
+              </Label>
               <Input
                 id="password"
                 type="password"
                 value={form.password}
                 onChange={(e) => updateField("password", e.target.value)}
-                placeholder="••••••••"
+                placeholder={isEdit ? "New password" : "••••••••"}
               />
             </div>
           </div>

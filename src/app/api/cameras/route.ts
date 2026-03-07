@@ -8,7 +8,12 @@ import {
 export async function GET() {
   try {
     const cameras = await listCameras();
-    return NextResponse.json(cameras);
+    // Mask passwords in list response for security
+    const maskedCameras = cameras.map(c => ({
+      ...c,
+      password: c.password ? "********" : null,
+    }));
+    return NextResponse.json(maskedCameras);
   } catch (err) {
     console.error("[GET /api/cameras]", err);
     return NextResponse.json({ error: "Failed to list cameras" }, { status: 500 });

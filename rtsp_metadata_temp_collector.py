@@ -9,6 +9,8 @@ disconnects. It avoids holding a continuous RTSP stream open between cycles.
 
 from __future__ import annotations
 
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import binascii
 import argparse
 import hashlib
 import json
@@ -38,6 +40,37 @@ METADATA_XML_RE = re.compile(
 )
 ROI_SUFFIX_RE = re.compile(r"([A-Z]+)$")
 ROI_COORDINATE_CACHE: Dict[Tuple[str, int], Dict[int, Dict[str, Any]]] = {}
+
+# AES-256-GCM decryption for camera passwords
+ENCRYPTION_PREFIX = "enc:v1:"
+
+
+def decrypt_password(stored: str, key_hex: str) -> str:
+    """Decrypt AES-256-GCM encrypted password matching Node.js format.
+
+    Format: enc:v1:<iv_hex>:<authTag_hex>:<ciphertext_hex>
+    Returns plain text if not encrypted (backward compatibility).
+    """
+    if not stored or not stored.startswith(ENCRYPTION_PREFIX):
+        return stored  # backward compat: plain text
+
+    try:
+        parts = stored[len(ENCRYPTION_PREFIX):].split(":")
+        if len(parts) != 3:
+            return stored  # invalid format, return as-is
+
+        iv = binascii.unhexlify(parts[0])
+        auth_tag = binascii.unhexlify(parts[1])
+        ciphertext = binascii.unhexlify(parts[2])
+        key = binascii.unhexlify(key_hex)
+
+        aesgcm = AESGCM(key)
+        # GCM expects ciphertext + tag concatenated
+        plaintext = aesgcm.decrypt(iv, ciphertext + auth_tag, None)
+        return plaintext.decode("utf-8")
+    except Exception:
+        # On decryption failure, return as-is for backward compat
+        return stored
 
 
 @dataclass(frozen=True)
@@ -115,6 +148,55 @@ def load_cameras(path: str) -> List[CameraConfig]:
         raise ValueError("No camera found in config file")
 
     return cameras
+
+
+def load_cameras_from_db(
+    database_url: str, encryption_key: str
+) -> List[CameraConfig]:
+    """Query active cameras with IP addresses from PostgreSQL.
+
+    Only returns cameras that are:
+    - Status = 'ACTIVE'
+    - Have non-null ip_address
+    - Have non-null username
+
+    Passwords are decrypted using the provided encryption key.
+    """
+    try:
+        import psycopg2
+    except ImportError:
+        raise ImportError(
+            "psycopg2-binary is required for --from-db mode. Install with: pip install psycopg2-binary"
+        )
+
+    conn = psycopg2.connect(database_url)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT ip_address, port, username, password, name
+                FROM cameras
+                WHERE status = 'ACTIVE'
+                  AND ip_address IS NOT NULL
+                  AND username IS NOT NULL
+            """)
+            cameras = []
+            for row in cur.fetchall():
+                ip, port, user, pwd, name = row
+                # Decrypt password if encrypted
+                if pwd and encryption_key:
+                    pwd = decrypt_password(pwd, encryption_key)
+                cameras.append(
+                    CameraConfig(
+                        host=ip,
+                        port=port or 80,
+                        username=user,
+                        password=pwd or "",
+                        name=name,
+                    )
+                )
+            return cameras
+    finally:
+        conn.close()
 
 
 def md5_hex(value: str) -> str:
@@ -896,6 +978,7 @@ def process_camera(
     camera: CameraConfig,
     preferred_profile: str,
     read_timeout_seconds: int,
+    roi_filter: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Collect temperature data from camera. Returns list of payloads (NULL on failure)."""
     try:
@@ -911,9 +994,7 @@ def process_camera(
             "camera": camera.camera_name,
             "host": camera.host,
             "roi": "UNKNOWN",
-            "min_temperature": None,
             "max_temperature": None,
-            "avg_temperature": None,
             "unit": "Fahrenheit",
             "status": "failed",
         }
@@ -926,18 +1007,18 @@ def process_camera(
 
     payloads: List[Dict[str, Any]] = []
     for row in deduped_rows.values():
-        min_celsius = row["min_temperature"]
+        # Filter by ROI if specified
+        if roi_filter and str(row["roi"]) != roi_filter:
+            continue
+
         max_celsius = row["max_temperature"]
-        avg_celsius = row["avg_temperature"]
 
         payload = {
             "ts_utc": utc_now_iso(),
             "camera": camera.camera_name,
             "host": camera.host,
             "roi": row["roi"],
-            "min_temperature": celsius_to_fahrenheit(min_celsius),
             "max_temperature": celsius_to_fahrenheit(max_celsius),
-            "avg_temperature": celsius_to_fahrenheit(avg_celsius),
             "unit": "Fahrenheit",
         }
 
@@ -977,6 +1058,7 @@ def run_collect_loop(
     once: bool,
     api_url: Optional[str] = None,
     api_secret: Optional[str] = None,
+    roi_filter: Optional[str] = None,
 ) -> None:
     next_tick = time.monotonic()
 
@@ -986,7 +1068,7 @@ def run_collect_loop(
 
         with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
             future_map = {
-                executor.submit(process_camera, camera, preferred_profile, read_timeout_seconds): camera
+                executor.submit(process_camera, camera, preferred_profile, read_timeout_seconds, roi_filter): camera
                 for camera in cameras
             }
             for future in as_completed(future_map):
@@ -1018,7 +1100,29 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="RTSP metadata snapshot collector for Hanwha thermal cameras"
     )
-    parser.add_argument("--cameras", required=True, help="Path to camera config JSON")
+    parser.add_argument(
+        "--cameras",
+        required=False,
+        default=None,
+        help="Path to camera config JSON (optional when using --from-db)",
+    )
+    parser.add_argument(
+        "--from-db",
+        action="store_true",
+        help="Read camera configs from database instead of JSON file",
+    )
+    parser.add_argument(
+        "--database-url",
+        type=str,
+        default=None,
+        help="PostgreSQL connection URL (or set DATABASE_URL env var)",
+    )
+    parser.add_argument(
+        "--encryption-key",
+        type=str,
+        default=None,
+        help="AES-256 key hex (or set CAMERA_ENCRYPTION_KEY env var)",
+    )
     parser.add_argument(
         "--interval-seconds",
         type=int,
@@ -1057,19 +1161,45 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("COLLECTOR_SECRET"),
         help="API secret for x-collector-secret header (default: COLLECTOR_SECRET env var)",
     )
+    parser.add_argument(
+        "--roi",
+        default=None,
+        help="Filter to specific ROI zone (e.g., 'A', 'B', 'C'). If not set, all ROIs are collected.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    cameras = load_cameras(args.cameras)
+
+    # Load cameras from DB or JSON file
+    if args.from_db:
+        # Get database URL
+        db_url = args.database_url or os.environ.get("DATABASE_URL")
+        if not db_url:
+            parser_error("--database-url or DATABASE_URL env required with --from-db")
+
+        # Get encryption key
+        enc_key = args.encryption_key or os.environ.get("CAMERA_ENCRYPTION_KEY") or ""
+
+        cameras = load_cameras_from_db(db_url, enc_key)
+        log(f"Loaded {len(cameras)} active camera(s) from database")
+    else:
+        # Legacy JSON file mode
+        if not args.cameras:
+            parser_error("--cameras required when not using --from-db")
+        cameras = load_cameras(args.cameras)
+        log(f"Loaded {len(cameras)} camera(s) from {args.cameras}")
 
     log(
-        f"Loaded {len(cameras)} camera(s). interval={args.interval_seconds}s, "
+        f"Starting RTSP snapshot collector: interval={args.interval_seconds}s, "
         f"read_timeout={args.read_timeout}s, preferred_profile={args.profile}"
     )
     if args.api_url:
         log(f"API endpoint: {args.api_url}")
+    if args.roi:
+        log(f"ROI filter: {args.roi}")
+
     run_collect_loop(
         cameras=cameras,
         interval_seconds=max(1, args.interval_seconds),
@@ -1079,7 +1209,14 @@ def main() -> None:
         once=args.once,
         api_url=args.api_url,
         api_secret=args.api_secret,
+        roi_filter=args.roi,
     )
+
+
+def parser_error(message: str) -> None:
+    """Print error message and exit."""
+    print(f"Error: {message}", file=__import__("sys").stderr)
+    __import__("sys").exit(1)
 
 
 if __name__ == "__main__":

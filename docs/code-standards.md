@@ -849,6 +849,105 @@ Result is rounded to 1 decimal place. Always used for display only; storage is i
 
 ---
 
+## Encryption & Security Utilities
+
+### Camera Password Encryption (AES-256-GCM)
+
+Camera credentials are encrypted at rest using AES-256-GCM symmetric encryption.
+
+**Pattern:**
+```typescript
+// src/lib/crypto-utils.ts
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+
+const PREFIX = "enc:v1:";
+
+function getKey(): Buffer {
+  const hex = process.env.CAMERA_ENCRYPTION_KEY;
+  if (!hex || hex.length !== 64) {
+    throw new Error("CAMERA_ENCRYPTION_KEY must be 64-char hex (32 bytes)");
+  }
+  return Buffer.from(hex, "hex");
+}
+
+export function encryptPassword(plaintext: string): string {
+  const key = getKey();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `${PREFIX}${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+export function decryptPassword(stored: string): string {
+  if (!stored.startsWith(PREFIX)) return stored; // backward compat
+  const [ivHex, authTagHex, ciphertextHex] = stored.slice(PREFIX.length).split(":");
+  const key = getKey();
+  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivHex, "hex"));
+  decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+  return decipher.update(Buffer.from(ciphertextHex, "hex")) + decipher.final("utf8");
+}
+```
+
+**Key Management:**
+- Key stored in `CAMERA_ENCRYPTION_KEY` env var (64-char hex = 32 bytes)
+- Generate with: `openssl rand -hex 32`
+- **Backup key securely** - if lost, all passwords unrecoverable
+- Key never committed to git (`.env.local` is gitignored)
+
+**Encrypted Format:**
+```
+enc:v1:<12-byte-iv-hex>:<16-byte-authTag-hex>:<ciphertext-hex>
+```
+
+**Cross-Language Compatibility (Node.js ↔ Python):**
+
+Python equivalent using `cryptography` package:
+```python
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import binascii
+
+def decrypt_password(stored: str, key_hex: str) -> str:
+    PREFIX = "enc:v1:"
+    if not stored.startswith(PREFIX):
+        return stored
+    parts = stored[len(PREFIX):].split(":")
+    iv = binascii.unhexlify(parts[0])
+    auth_tag = binascii.unhexlify(parts[1])
+    ciphertext = binascii.unhexlify(parts[2])
+    key = binascii.unhexlify(key_hex)
+    aesgcm = AESGCM(key)
+    plaintext = aesgcm.decrypt(iv, ciphertext + auth_tag, None)
+    return plaintext.decode("utf-8")
+```
+
+**Usage in Services:**
+```typescript
+// Encrypt on write (create/update)
+export async function createCamera(input: CameraInput) {
+  return prisma.camera.create({
+    data: {
+      // ... other fields
+      password: input.password ? encryptPassword(input.password) : null,
+    },
+  });
+}
+
+// Decrypt on read
+export async function getCamera(cameraId: string) {
+  const camera = await prisma.camera.findUnique({ where: { cameraId } });
+  return camera ? { ...camera, password: decryptPassword(camera.password) } : null;
+}
+```
+
+**Security Considerations:**
+- Passwords masked in list API responses: `"********"`
+- Edit form only updates password if field is explicitly changed
+- Migration script (`scripts/encrypt-existing-passwords.ts`) encrypts existing plain-text passwords
+- AES-256-GCM provides authenticated encryption (detects tampering)
+
+---
+
 ## Unresolved Questions
 
 - [ ] Should we use a Zod validation library (vs current custom approach)?

@@ -3,7 +3,6 @@
 import { cn } from "@/lib/utils";
 
 const TIME_RANGES = [
-  { label: "15m", value: 15 },
   { label: "30m", value: 30 },
   { label: "1h", value: 60 },
   { label: "6h", value: 360 },

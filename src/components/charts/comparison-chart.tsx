@@ -81,7 +81,7 @@ export function ComparisonChart({ datasets }: ComparisonChartProps) {
           minTickGap={40}
         />
         <YAxis
-          domain={["auto", "auto"]}
+          domain={[(min: number) => Math.floor(min - 2), (max: number) => Math.ceil(max + 2)]}
           tick={{ fontSize: 12 }}
           tickFormatter={(v: number) => `${v.toFixed(0)}°${unit}`}
           width={48}

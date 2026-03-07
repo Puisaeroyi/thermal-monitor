@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         >`
             SELECT
                 camera_id,
-                AVG(celsius)::float                          AS avg_temp,
+                AVG(COALESCE(avg_celsius, celsius))::float   AS avg_temp,
                 MIN(COALESCE(min_celsius, celsius))::float   AS min_temp,
                 MAX(COALESCE(max_celsius, celsius))::float   AS max_temp,
                 COUNT(*)                                     AS count

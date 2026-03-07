@@ -93,7 +93,6 @@ model TemperatureThreshold {
   groupId         String? @map("group_id")
   minCelsius      Float?  @map("min_celsius") @db.Real
   maxCelsius      Float?  @map("max_celsius") @db.Real
-  cooldownMinutes Int     @default(5) @map("cooldown_minutes")
   notifyEmail     Boolean @default(false) @map("notify_email")
   enabled         Boolean @default(true)
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz()
@@ -110,7 +109,6 @@ model GapThreshold {
   intervalMinutes Int          @map("interval_minutes")
   maxGapCelsius   Float        @map("max_gap_celsius") @db.Real
   direction       GapDirection @default(BOTH)
-  cooldownMinutes Int          @default(5) @map("cooldown_minutes")
   notifyEmail     Boolean      @default(false) @map("notify_email")
   enabled         Boolean      @default(true)
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz()
@@ -122,6 +120,7 @@ model GapThreshold {
 model Alert {
   id             String    @id @default(cuid())
   cameraId       String    @map("camera_id")
+  thresholdId    String?   @map("threshold_id")
   type           AlertType
   message        String
   celsius        Float     @db.Real
@@ -135,6 +134,7 @@ model Alert {
 
   @@index([cameraId, createdAt])
   @@index([acknowledged])
+  @@index([thresholdId, cameraId, acknowledged])
   @@map("alerts")
 }
 

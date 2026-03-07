@@ -53,11 +53,10 @@ thermal-monitor/
 │   ├── services/                     # Business logic + DB access
 │   │   ├── reading-service.ts        # Bulk ingest, query, latest readings (raw SQL LATERAL JOIN)
 │   │   ├── camera-service.ts         # Camera CRUD
-│   │   ├── alert-service.ts          # Alert queries + filtering
-│   │   ├── alert-evaluation-service.ts   # Evaluate readings vs thresholds, create alerts
+│   │   ├── alert-service.ts          # Alert queries + filtering + hasUncheckedAlert check
+│   │   ├── alert-evaluation-service.ts   # Evaluate readings vs thresholds, state-based suppression
 │   │   ├── threshold-service.ts      # Temperature + gap threshold CRUD
 │   │   ├── threshold-cache.ts        # In-memory threshold lookup
-│   │   ├── cooldown-manager.ts       # Track alert cooldown periods
 │   │   ├── gap-ring-buffer.ts        # Ring buffer for gap detection
 │   │   └── email-service.ts          # Nodemailer integration
 │   └── types/                        # TypeScript interfaces
@@ -122,7 +121,6 @@ plans/
 ### TemperatureThreshold
 - `id`, `name`, `cameraId` (optional) — Global or per-camera
 - `minCelsius`, `maxCelsius` (Float, optional) — Bounds
-- `cooldownMinutes` (Int, default 5) — Prevent alert spam
 - `notifyEmail`, `enabled` (Boolean)
 - `createdAt`, `updatedAt`
 
@@ -131,15 +129,17 @@ plans/
 - `intervalMinutes` (Int) — Sample period (e.g., 5min)
 - `maxGapCelsius` (Float) — Max allowed change
 - `direction` (GapDirection) — RISE | DROP | BOTH
-- `cooldownMinutes`, `notifyEmail`, `enabled`, `createdAt`, `updatedAt`
+- `notifyEmail`, `enabled`, `createdAt`, `updatedAt`
 
 ### Alert
-- `id`, `cameraId` (FK→Camera), `type` (AlertType) — TEMPERATURE | GAP
+- `id` (String, PK)
+- `cameraId` (FK→Camera), `thresholdId` (optional, FK→TemperatureThreshold/GapThreshold)
+- `type` (AlertType) — TEMPERATURE | GAP
 - `message`, `celsius`, `thresholdValue` (Float)
 - `acknowledged` (Boolean), `acknowledgedAt` (DateTime, nullable)
 - `createdAt`
 - **Relations:** camera
-- **Indexes:** (cameraId, createdAt), (acknowledged)
+- **Indexes:** (cameraId, createdAt), (acknowledged), (thresholdId, cameraId, acknowledged) — for fast unchecked-alert lookup
 
 ---
 
@@ -221,8 +221,8 @@ plans/
 - `evaluateReading(cameraId, celsius, timestamp)` — Called during reading ingestion
 - Checks temperature thresholds (min/max)
 - Checks gap thresholds (ring buffer)
-- Respects cooldown (via cooldownManager)
-- Creates Alert records
+- State-based suppression: skips if unchecked alert exists for same threshold+camera
+- Creates Alert records with thresholdId persisted
 - Queues email notifications (non-blocking)
 
 **Error Handling:** Failures logged but don't block reading ingestion.
@@ -244,15 +244,6 @@ plans/
 - `refreshCache()` — Reload from DB (called at startup)
 
 **Rationale:** Avoid per-reading DB query; re-load on threshold create/update.
-
-### cooldown-manager.ts
-**Purpose:** Prevent alert spam
-
-**Key Functions:**
-- `isOnCooldown(cameraId, thresholdId)` → Boolean
-- `startCooldown(cameraId, thresholdId, minutes)` → void
-
-**Implementation:** In-memory Map<string, Map<string, Date>>. Lost on restart (acceptable for local deployments).
 
 ### gap-ring-buffer.ts
 **Purpose:** Track temperature samples for gap detection
@@ -441,7 +432,7 @@ usePolling<T>(url: string, intervalMs: number): { data: T | null, error: Error |
       └─ For each reading: evaluateReading()
          └─ Check temp thresholds
          └─ Check gap thresholds (ring buffer)
-         └─ If breach + !onCooldown: create Alert
+         └─ If breach + no unchecked alert: create Alert (with thresholdId)
          └─ Queue email (non-blocking)
       └─ Return { inserted: N }
 ```

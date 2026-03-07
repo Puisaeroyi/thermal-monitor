@@ -37,7 +37,6 @@ interface TempForm {
   unit: "C" | "F"; // User-selected unit for input
   minTemp: string; // Display value in selected unit
   maxTemp: string; // Display value in selected unit
-  cooldownMinutes: string;
   enabled: boolean;
 }
 
@@ -47,7 +46,6 @@ const EMPTY_FORM: TempForm = {
   unit: "F", // Default to Fahrenheit
   minTemp: "",
   maxTemp: "",
-  cooldownMinutes: "5",
   enabled: true,
 };
 
@@ -86,7 +84,6 @@ export function TemperatureThresholdForm({
         unit,
         minTemp,
         maxTemp,
-        cooldownMinutes: threshold.cooldownMinutes.toString(),
         enabled: threshold.enabled,
       });
     } else {
@@ -126,7 +123,6 @@ export function TemperatureThresholdForm({
         groupId: null as string | null,
         minCelsius,
         maxCelsius,
-        cooldownMinutes: parseInt(form.cooldownMinutes, 10),
         enabled: form.enabled,
       };
       if (isGroup) {
@@ -238,18 +234,6 @@ export function TemperatureThresholdForm({
                 placeholder={form.unit === "F" ? "212" : "100"}
               />
             </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="temp-cooldown">Cooldown (minutes)</Label>
-            <Input
-              id="temp-cooldown"
-              type="number"
-              min="1"
-              value={form.cooldownMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, cooldownMinutes: e.target.value }))}
-              required
-            />
           </div>
 
           <div className="flex items-center gap-2">

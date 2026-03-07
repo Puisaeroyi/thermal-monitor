@@ -105,7 +105,6 @@ export function ThresholdLists({
                   <TableHead>Name</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Range</TableHead>
-                  <TableHead>Cooldown</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -120,7 +119,6 @@ export function ThresholdLists({
                       {" "}
                       {t.maxCelsius != null && <Badge variant="outline">Max: {formatTemperature(t.maxCelsius, unit)}</Badge>}
                     </TableCell>
-                    <TableCell>{t.cooldownMinutes}m</TableCell>
                     <TableCell>
                       <Switch
                         checked={t.enabled}
@@ -157,7 +155,6 @@ export function ThresholdLists({
                   <TableHead>Name</TableHead>
                   <TableHead>Scope</TableHead>
                   <TableHead>Condition</TableHead>
-                  <TableHead>Cooldown</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -176,7 +173,6 @@ export function ThresholdLists({
                       {" "}
                       {formatTemperature(t.maxGapCelsius, unit)} in {t.intervalMinutes}m
                     </TableCell>
-                    <TableCell>{t.cooldownMinutes}m</TableCell>
                     <TableCell>
                       <Switch
                         checked={t.enabled}

@@ -27,7 +27,6 @@ export interface TemperatureThresholdInput {
   groupId?: string | null;
   minCelsius?: number | null;
   maxCelsius?: number | null;
-  cooldownMinutes?: number;
   notifyEmail?: boolean;
   enabled?: boolean;
 }
@@ -39,7 +38,6 @@ export interface GapThresholdInput {
   intervalMinutes: number;
   maxGapCelsius: number;
   direction?: "RISE" | "DROP" | "BOTH";
-  cooldownMinutes?: number;
   notifyEmail?: boolean;
   enabled?: boolean;
 }
@@ -241,9 +239,6 @@ export function validateTemperatureThresholdInput(
   if (d.maxCelsius !== undefined && d.maxCelsius !== null && typeof d.maxCelsius !== "number") {
     throw new ValidationError("maxCelsius must be a number or null");
   }
-  if (d.cooldownMinutes !== undefined && (typeof d.cooldownMinutes !== "number" || d.cooldownMinutes < 0)) {
-    throw new ValidationError("cooldownMinutes must be a non-negative number");
-  }
 
   return {
     name: d.name as string,
@@ -251,7 +246,6 @@ export function validateTemperatureThresholdInput(
     groupId: d.groupId as string | null | undefined,
     minCelsius: d.minCelsius as number | null | undefined,
     maxCelsius: d.maxCelsius as number | null | undefined,
-    cooldownMinutes: d.cooldownMinutes as number | undefined,
     notifyEmail: d.notifyEmail as boolean | undefined,
     enabled: d.enabled as boolean | undefined,
   };
@@ -288,7 +282,6 @@ export function validateGapThresholdInput(data: unknown): GapThresholdInput {
     intervalMinutes: d.intervalMinutes as number,
     maxGapCelsius: d.maxGapCelsius as number,
     direction: d.direction as "RISE" | "DROP" | "BOTH" | undefined,
-    cooldownMinutes: d.cooldownMinutes as number | undefined,
     notifyEmail: d.notifyEmail as boolean | undefined,
     enabled: d.enabled as boolean | undefined,
   };

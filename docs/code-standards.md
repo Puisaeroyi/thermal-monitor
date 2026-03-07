@@ -76,7 +76,7 @@ src/
 │   ├── alert-evaluation-service.ts
 │   ├── threshold-service.ts
 │   ├── threshold-cache.ts
-│   ├── cooldown-manager.ts
+│   ├── has-unread-alert.ts
 │   ├── gap-ring-buffer.ts
 │   └── email-service.ts
 └── types/                 # TypeScript interfaces
@@ -597,7 +597,7 @@ Use conventional commits:
 ```
 feat(dashboard): add drag-and-drop camera panels
 
-fix(alert-service): prevent duplicate alerts during cooldown
+fix(alert-service): prevent duplicate alerts with state-based suppression
 
 docs: update API endpoint documentation
 
@@ -753,7 +753,7 @@ const latestReadings = await prisma.$queryRaw`...`;
 ```typescript
 /**
  * Evaluate a reading against temperature and gap thresholds.
- * Creates alerts if breach detected and respects cooldown period.
+ * Creates alerts if breach detected and respects state-based suppression.
  * Non-blocking email notifications are queued asynchronously.
  *
  * @param cameraId - Camera identifier

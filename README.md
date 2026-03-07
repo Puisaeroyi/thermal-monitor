@@ -92,7 +92,7 @@ prisma/
 **Camera** — Device identifier, location, status, group membership
 **Group** — Organize cameras (e.g., "Warehouse A", color-coded)
 **Reading** — Temperature samples (cameraId + timestamp, 600 rows/min at 5s interval)
-**TemperatureThreshold** — Min/max bounds with three scope levels: global, camera-specific, or group-scoped. Includes cooldown period and email notify.
+**TemperatureThreshold** — Min/max bounds with three scope levels: global, camera-specific, or group-scoped. Email notify.
 **GapThreshold** — Temperature change rate (RISE/DROP/BOTH) over interval with same scope levels: global, camera-specific, or group-scoped.
 **Alert** — Fired when threshold breached, can be acknowledged
 
@@ -106,7 +106,7 @@ See `docs/system-architecture.md` for schema diagram.
 - **Temperature Charts** — Line charts with time range selector for deep dives.
 - **Gap Detection** — Detect rapid temperature swings (e.g., 10°C rise in 5 min).
 - **Multi-Camera Comparison** — Side-by-side temperature trends.
-- **Threshold Management** — Global, per-camera, or per-group threshold limits. Configurable cooldown to prevent spam.
+- **Threshold Management** — Global, per-camera, or per-group threshold limits. State-based suppression (checked/unchecked).
 - **Group Organization** — Color-coded camera groups for visual sorting.
 - **Dark Mode** — Full light/dark support with system preference detection.
 
@@ -142,7 +142,6 @@ Full request/response specs: `docs/api-docs.md`
 - **Fallback**: HTTP polling every 5s if SSE unavailable (graceful degradation)
 - **Redis Pub/Sub**: Broadcast readings and alerts to all SSE connections
 - **Redis Cache**: Threshold data cached with 60s TTL, survives restarts
-- **Redis Cooldowns**: Alert cooldowns persist across restarts via TTL keys
 - **Benefits**: 50x fewer requests (2s polling → 1 SSE connection), instant updates, shared state across instances
 
 ```
@@ -160,7 +159,7 @@ Runs **synchronously during reading ingestion**:
 1. Filter applicable thresholds by scope: global (no camera/group), camera-specific, or group-scoped (if camera belongs to group)
 2. Temperature threshold breach? Create `TEMPERATURE` alert
 3. Gap threshold breach (e.g., 10°C/5min)? Create `GAP` alert
-4. Cooldown active? Skip if already alerted in last N minutes (Redis TTL key)
+4. Unchecked alert exists for same threshold+camera? Skip (state-based suppression)
 5. Email notify? Queue via Nodemailer (best-effort, non-blocking)
 6. Publish to Redis pub/sub → SSE pushes to all connected browsers
 

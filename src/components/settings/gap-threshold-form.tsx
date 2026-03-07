@@ -37,7 +37,6 @@ interface GapForm {
   intervalMinutes: string;
   maxGap: string; // Display value in selected unit
   direction: GapDirection;
-  cooldownMinutes: string;
   enabled: boolean;
 }
 
@@ -48,7 +47,6 @@ const EMPTY_FORM: GapForm = {
   intervalMinutes: "10",
   maxGap: "18", // Default 18°F (≈10°C)
   direction: "BOTH",
-  cooldownMinutes: "5",
   enabled: true,
 };
 
@@ -85,7 +83,6 @@ export function GapThresholdForm({
         intervalMinutes: threshold.intervalMinutes.toString(),
         maxGap,
         direction: threshold.direction,
-        cooldownMinutes: threshold.cooldownMinutes.toString(),
         enabled: threshold.enabled,
       });
     } else {
@@ -118,7 +115,6 @@ export function GapThresholdForm({
         intervalMinutes: parseInt(form.intervalMinutes, 10),
         maxGapCelsius,
         direction: form.direction,
-        cooldownMinutes: parseInt(form.cooldownMinutes, 10),
         enabled: form.enabled,
       };
       if (isGroup) {
@@ -249,18 +245,6 @@ export function GapThresholdForm({
                 <SelectItem value="BOTH">Rise or Drop</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="gap-cooldown">Cooldown (minutes)</Label>
-            <Input
-              id="gap-cooldown"
-              type="number"
-              min="1"
-              value={form.cooldownMinutes}
-              onChange={(e) => setForm((f) => ({ ...f, cooldownMinutes: e.target.value }))}
-              required
-            />
           </div>
 
           <div className="flex items-center gap-2">

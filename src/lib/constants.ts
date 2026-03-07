@@ -16,9 +16,6 @@ export const MAX_BATCH_SIZE = 1000;
 /** Gap buffer max age in minutes */
 export const GAP_BUFFER_MAX_MINUTES = 15;
 
-/** Default cooldown for alerts in minutes */
-export const DEFAULT_COOLDOWN_MINUTES = 5;
-
 /** Alerts per page */
 export const ALERTS_PAGE_SIZE = 25;
 

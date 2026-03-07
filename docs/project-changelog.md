@@ -115,7 +115,7 @@ All significant changes, features, and fixes for the Thermal Monitor project.
 
 ### Future Enhancements (Backlog)
 - [ ] WebSocket/SSE for real-time updates (v1.1)
-- [ ] Redis caching for thresholds and cooldowns (v1.1)
+- [ ] Redis caching for thresholds and SSE pub/sub (v1.1)
 - [ ] Multi-user authentication (v2.0)
 - [ ] Role-based access control (v2.0)
 - [ ] Mobile app (React Native, v3.0)

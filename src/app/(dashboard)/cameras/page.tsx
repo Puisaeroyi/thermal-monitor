@@ -120,28 +120,24 @@ export default function CamerasPage() {
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Cameras</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setExportModalOpen(true)}>
-            Export Excel
-          </Button>
-          {canWrite && (
-            <>
-              <Button variant="outline" onClick={handleAddGroupClick}>
-                Add Group
-              </Button>
-              <Button onClick={handleAddClick}>Add Camera</Button>
-            </>
-          )}
-        </div>
       </div>
 
       {isLoading ? (
         <p className="text-muted-foreground text-sm">Loading cameras…</p>
       ) : (
-        <CameraTable cameras={cameras} onEdit={handleEdit} onDelete={handleDelete} onRefresh={fetchCameras} canWrite={canWrite} />
+        <CameraTable
+          cameras={cameras}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onRefresh={fetchCameras}
+          onExport={() => setExportModalOpen(true)}
+          onAddGroup={handleAddGroupClick}
+          onAddCamera={handleAddClick}
+          canWrite={canWrite}
+        />
       )}
 
       <CameraFormDialog

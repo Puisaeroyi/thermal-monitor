@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InteractiveMap } from "@/components/groups/interactive-map";
 import { MapUploadButton } from "@/components/groups/map-upload-button";
+import { useUserRole, isWriteRole } from "@/hooks/use-user-role";
 
 interface GroupInfo {
   id: string;
@@ -33,6 +34,8 @@ interface Pin {
 }
 
 export default function ZonePage() {
+  const role = useUserRole();
+  const canWrite = isWriteRole(role);
   const { zoneId } = useParams<{ zoneId: string }>();
   const [group, setGroup] = useState<GroupInfo | null>(null);
   const [cameras, setCameras] = useState<Camera[]>([]);
@@ -128,7 +131,7 @@ export default function ZonePage() {
         <Card className="flex flex-col flex-1 min-w-0">
           <CardHeader className="pb-3 shrink-0 flex flex-row items-center justify-between">
             <CardTitle className="text-base">Map View</CardTitle>
-            {group && (
+            {group && canWrite && (
               <MapUploadButton
                 groupId={zoneId}
                 hasMap={!!group.mapImage}
@@ -149,6 +152,7 @@ export default function ZonePage() {
               pins={pins}
               cameras={cameras}
               onPinsChange={setPins}
+              readOnly={!canWrite}
             />
           </CardContent>
         </Card>

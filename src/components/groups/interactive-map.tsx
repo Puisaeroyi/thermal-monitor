@@ -25,6 +25,7 @@ interface InteractiveMapProps {
   pins: Pin[];
   cameras: { cameraId: string; name: string }[];
   onPinsChange: (pins: Pin[]) => void;
+  readOnly?: boolean;
 }
 
 export function InteractiveMap({
@@ -33,6 +34,7 @@ export function InteractiveMap({
   pins,
   cameras,
   onPinsChange,
+  readOnly = false,
 }: InteractiveMapProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [clickPos, setClickPos] = useState<{ x: number; y: number } | null>(null);
@@ -44,6 +46,7 @@ export function InteractiveMap({
 
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (readOnly) return;
       if (availableCameras.length === 0) return;
       const rect = e.currentTarget.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -122,6 +125,7 @@ export function InteractiveMap({
               x={pin.x}
               y={pin.y}
               onDelete={handleDeletePin}
+              readOnly={readOnly}
             />
           ))}
         </div>

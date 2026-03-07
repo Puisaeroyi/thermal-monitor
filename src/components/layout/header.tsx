@@ -20,13 +20,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTempUnit } from "@/contexts/temp-unit-context";
+import { useUserRole, isWriteRole } from "@/hooks/use-user-role";
 
 const NAV_LINKS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/cameras", label: "Cameras", icon: Camera },
   { href: "/comparison", label: "Comparison", icon: GitCompare },
   { href: "/alerts", label: "Alerts", icon: Bell },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings", label: "Settings", icon: Settings, writeOnly: true },
 ];
 
 export function Header() {
@@ -37,9 +38,11 @@ export function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const role = useUserRole();
+  const canWrite = isWriteRole(role);
+
   const [mounted,setMounted] = useState(false);
   const [username,setUsername] = useState("");
-  const [role,setRole] = useState("");
 
   useEffect(()=>{
 
@@ -50,27 +53,18 @@ export function Header() {
     if(user){
       const parsed = JSON.parse(user);
       setUsername(parsed.username);
-      setRole(parsed.role);
     }
 
   },[]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem("user");
+    await fetch("/api/logout", { method: "POST" });
     router.replace("/login");
   };
 
-  // role filter
-  const filteredLinks = NAV_LINKS.filter((link)=>{
-
-    if(role === "operator"){
-      return (
-        link.href === "/" ||
-        link.href === "/cameras" ||
-        link.href === "/alerts"
-      );
-    }
-
+  const filteredLinks = NAV_LINKS.filter((link) => {
+    if (link.writeOnly && !canWrite) return false;
     return true;
   });
 

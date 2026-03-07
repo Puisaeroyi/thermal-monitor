@@ -5,6 +5,7 @@ import { Camera } from "@/types/camera";
 import { CameraTable } from "@/components/cameras/camera-table";
 import { CameraFormDialog } from "@/components/cameras/camera-form-dialog";
 import { Button } from "@/components/ui/button";
+import { useUserRole, isWriteRole } from "@/hooks/use-user-role";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,8 @@ interface Group {
 
 /** Camera management page — list, add, edit, delete cameras. */
 export default function CamerasPage() {
+  const role = useUserRole();
+  const canWrite = isWriteRole(role);
   const [cameras, setCameras] = useState<CameraWithTemp[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,17 +125,21 @@ export default function CamerasPage() {
           <Button variant="outline" onClick={handleAddGroupClick}>
             Export Excel
           </Button>
-          <Button variant="outline" onClick={handleAddGroupClick}>
-            Add Group
-          </Button>
-          <Button onClick={handleAddClick}>Add Camera</Button>
+          {canWrite && (
+            <>
+              <Button variant="outline" onClick={handleAddGroupClick}>
+                Add Group
+              </Button>
+              <Button onClick={handleAddClick}>Add Camera</Button>
+            </>
+          )}
         </div>
       </div>
 
       {isLoading ? (
         <p className="text-muted-foreground text-sm">Loading cameras…</p>
       ) : (
-        <CameraTable cameras={cameras} onEdit={handleEdit} onDelete={handleDelete} onRefresh={fetchCameras} />
+        <CameraTable cameras={cameras} onEdit={handleEdit} onDelete={handleDelete} onRefresh={fetchCameras} canWrite={canWrite} />
       )}
 
       <CameraFormDialog

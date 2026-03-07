@@ -2,7 +2,8 @@ import { PrismaClient } from "../../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { cameraSeedData, groupSeedData } from "./camera-seed-data";
 import { generateReadingsBatch } from "./reading-generator";
-import "dotenv/config";
+import { config } from "dotenv";
+config({ path: ".env.local" });
 
 const BATCH_SIZE = 1000;
 
@@ -24,6 +25,22 @@ async function main() {
       await prisma.group.deleteMany();
       console.log("Cleared.");
     }
+
+    // Seed default users
+    console.log("Seeding users...");
+    const defaultUsers = [
+      { username: "operator", password: "123456", role: "operator", firstLogin: false },
+      { username: "admin", password: "123456", role: "admin", firstLogin: false },
+      { username: "tempus", password: "654321", role: "admin", firstLogin: false },
+    ];
+    for (const u of defaultUsers) {
+      await prisma.user.upsert({
+        where: { username: u.username },
+        update: {},
+        create: u,
+      });
+    }
+    console.log(`  ${defaultUsers.length} users seeded.`);
 
     // Create groups
     console.log(`Creating ${groupSeedData.length} groups...`);

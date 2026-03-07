@@ -1,0 +1,6 @@
+# RTSP Metadata Collector Requirements
+
+requests>=2.28.0
+onvif-zeep-async>=4.0.0
+psycopg2-binary>=2.9.0
+cryptography>=40.0.0

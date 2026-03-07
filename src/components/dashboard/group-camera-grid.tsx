@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CameraCard } from "./camera-card";
 import type { TempUnit } from "@/contexts/temp-unit-context";
 
@@ -18,6 +19,7 @@ export function GroupCameraGrid({
   unit,
 }: Props) {
 
+  const router = useRouter();
   const ZONES_PER_PAGE = 3;
 
   const [page, setPage] = useState(1);
@@ -45,8 +47,11 @@ export function GroupCameraGrid({
               className="border rounded-xl p-4 space-y-4 bg-background"
             >
 
-              {/* ZONE TITLE */}
-              <h2 className="text-lg font-semibold">
+              {/* ZONE TITLE — click to view group detail */}
+              <h2
+                className="text-lg font-semibold cursor-pointer hover:underline"
+                onClick={() => router.push(`/groups/${group.id}`)}
+              >
                 {group.name}
               </h2>
 

@@ -13,6 +13,8 @@ export interface CameraReading {
   status: "ACTIVE" | "INACTIVE";
   groupId: string | null;
   celsius: number | null;
+  maxCelsius?: number | null;
+  minCelsius?: number | null;
   timestamp: string | null;
 
   // 🔥 Added for mini chart

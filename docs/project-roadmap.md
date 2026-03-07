@@ -11,7 +11,8 @@ Implementation progress and future phases for Thermal Monitor.
 | **Phase 1-3** | 0.1.0 | ✓ Complete | 2026-02-27 | 12h |
 | **Phase 4-7** | 0.2.0 | ✓ Complete | 2026-03-03 | 20h |
 | **API Tester** | 0.2.1 | ✓ Complete | 2026-03-05 | 2h |
-| **v1.0 (MVP)** | 1.0.0 | Planned | 2026-03-10 | — |
+| **RTSP Integration** | 0.3.0 | ✓ Complete | 2026-03-06 | 16h |
+| **v1.0 (MVP)** | 1.0.0 | Ready | 2026-03-10 | — |
 | **v1.1 (Scaling)** | 1.1.0 | Backlog | 2026-04-01 | — |
 | **v2.0 (Enterprise)** | 2.0.0 | Backlog | 2026-06-01 | — |
 
@@ -313,6 +314,62 @@ Implementation progress and future phases for Thermal Monitor.
 - docs/system-architecture.md — Diagrams + data flows
 - docs/project-roadmap.md — This file
 - docs/deployment-guide.md — Production setup
+
+---
+
+### Phase 9: RTSP Temperature Integration (Complete)
+
+**Status:** Delivered 2026-03-06
+
+**Deliverables:**
+- [x] Python RTSP metadata collector script (50 cameras, 8 parallel workers)
+- [x] POST /api/temperature-readings endpoint (batch ingest)
+- [x] NULL → INACTIVE auto-detection (honest data on failure)
+- [x] CSV export endpoint with date filtering
+- [x] Dashboard enhancements (offline badges, chart gaps, stale data indicator)
+- [x] Deployment scripts (install-cron.sh, test-collector.sh)
+
+**Key Features:**
+- Real-time thermal camera integration (Hanwha RTSP/ONVIF)
+- 50 cameras collected every 60 seconds (8 parallel workers, <80s total)
+- Historical data persistence in PostgreSQL
+- Auto INACTIVE status on collection failures
+- Gap display in charts (connectNulls={false})
+- Last-updated timestamp on camera cards
+- CSV export of readings with date range filtering
+
+**Components Modified:**
+- `rtsp_metadata_temp_collector.py` — NULL output on failure, HTTP POST
+- `src/app/api/temperature-readings/route.ts` — New endpoint
+- `src/components/dashboard/alert-summary.tsx` — Stale data indicator
+- `src/components/dashboard/group-camera-grid.tsx` — Offline badges, chart gaps
+- `src/lib/validate.ts` — Input validation
+
+**Services:**
+- Temperature reading ingestion (POST handler)
+- Status auto-update (NULL → INACTIVE, valid → ACTIVE)
+- CSV export service
+
+**Effort:** 16 hours
+
+**Success Criteria:**
+- [x] Python script collects from all 50 cameras
+- [x] API endpoint accepts batch readings
+- [x] NULL readings mark camera INACTIVE
+- [x] Charts show gaps for NULL values
+- [x] CSV export works with date filters
+- [x] Dashboard shows last-updated time
+- [x] Cron job deployment tested
+
+**Performance Baselines:**
+- Collection duration: 60-80s for 50 cameras
+- API ingest time: <2s for batch
+- CSV export (1 day): <5s
+
+**Database Impact:**
+- ~72K rows/day (50 cameras × 1440 min/day)
+- NULL values supported natively (already nullable columns)
+- No schema migration required
 
 ---
 

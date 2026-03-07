@@ -7,6 +7,7 @@ import { ArrowUp, ArrowDown, Circle } from "lucide-react";
 import {
   formatTemperature,
   getTemperatureColor,
+  getTimeSince,
 } from "@/lib/temperature-utils";
 
 import type { CameraReading } from "@/hooks/use-cameras";
@@ -119,6 +120,12 @@ const CameraCard = React.memo(function CameraCard({
     camera.timestamp &&
     Date.now() - new Date(camera.timestamp).getTime() < 5000;
 
+  // Stale data indicator: show "Last updated: Xm ago" if data older than 2 minutes
+  const isStale =
+    camera.timestamp &&
+    Date.now() - new Date(camera.timestamp).getTime() > 120000;
+  const staleLabel = camera.timestamp ? getTimeSince(camera.timestamp) : null;
+
   /* TREND */
 
   const trend = React.useMemo(() => {
@@ -171,10 +178,12 @@ const CameraCard = React.memo(function CameraCard({
           {camera.location}
         </p>
 
-        {/* REALTIME (ẨN NẾU OFFLINE) */}
+        {/* REALTIME — hidden when offline */}
 
         {!isInactive && (
-          <span className="text-xs text-muted-foreground">{realtime}</span>
+          <span className={cn("text-xs text-muted-foreground", isStale && "text-yellow-500")}>
+            {isStale ? `Updated ${staleLabel}` : realtime}
+          </span>
         )}
       </div>
 

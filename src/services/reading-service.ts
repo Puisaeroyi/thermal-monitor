@@ -19,6 +19,8 @@ export interface LatestReading {
   groupId: string | null;
   id: string;
   celsius: number;
+  maxCelsius: number | null;
+  minCelsius: number | null;
   timestamp: Date;
 }
 
@@ -27,6 +29,8 @@ export async function ingestReadings(readings: ReadingInput[]) {
   const data = readings.map((r) => ({
     cameraId: r.cameraId,
     celsius: r.celsius,
+    ...(r.maxCelsius !== undefined && { maxCelsius: r.maxCelsius }),
+    ...(r.minCelsius !== undefined && { minCelsius: r.minCelsius }),
     timestamp: new Date(r.timestamp),
   }));
 
@@ -109,6 +113,8 @@ export async function getLatestReadings(): Promise<LatestReading[]> {
       group_id: string | null;
       id: bigint;
       celsius: number;
+      max_celsius: number | null;
+      min_celsius: number | null;
       timestamp: Date;
     }>
   >`
@@ -120,10 +126,12 @@ export async function getLatestReadings(): Promise<LatestReading[]> {
       c.group_id,
       r.id,
       r.celsius,
+      r.max_celsius,
+      r.min_celsius,
       r.timestamp
     FROM cameras c
     LEFT JOIN LATERAL (
-      SELECT id, celsius, timestamp
+      SELECT id, celsius, max_celsius, min_celsius, timestamp
       FROM readings
       WHERE camera_id = c.camera_id
       ORDER BY timestamp DESC
@@ -140,6 +148,8 @@ export async function getLatestReadings(): Promise<LatestReading[]> {
     groupId: r.group_id,
     id: r.id?.toString() ?? "",
     celsius: r.celsius,
+    maxCelsius: r.max_celsius,
+    minCelsius: r.min_celsius,
     timestamp: r.timestamp,
   }));
 }

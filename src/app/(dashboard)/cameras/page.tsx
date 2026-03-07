@@ -132,11 +132,7 @@ export default function CamerasPage() {
       {isLoading ? (
         <p className="text-muted-foreground text-sm">Loading cameras…</p>
       ) : (
-        <CameraTable
-          cameras={cameras}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        <CameraTable cameras={cameras} onEdit={handleEdit} onDelete={handleDelete} onRefresh={fetchCameras} />
       )}
 
       <CameraFormDialog

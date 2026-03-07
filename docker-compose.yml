@@ -1,4 +1,32 @@
 services:
+  # ==========================================================================
+  # INITIALIZATION - Runs once on startup to initialize database
+  # Set APP_MODE=seed in .env for test server with sample data
+  # Leave empty or unset for production (clean schema, no fake data)
+  # ==========================================================================
+  init-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    command: >
+      sh -c '
+        if [ "$$APP_MODE" = "seed" ]; then
+          echo "=== TEST MODE: Initializing database with seed data ===" &&
+          npm run db:reset;
+        else
+          echo "=== PRODUCTION MODE: Initializing database (no seed data) ===" &&
+          npx prisma migrate deploy;
+        fi
+      '
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/thermal_monitor"
+      APP_MODE: ${APP_MODE:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -16,7 +44,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5434:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -35,7 +63,7 @@ services:
       dockerfile: Dockerfile
       target: dev
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - ./:/app
       - /app/node_modules
@@ -43,11 +71,37 @@ services:
     environment:
       DATABASE_URL: "postgresql://postgres:postgres@db:5432/thermal_monitor"
       REDIS_URL: "redis://redis:6379"
+      CAMERA_ENCRYPTION_KEY: ${CAMERA_ENCRYPTION_KEY:-}
+      COLLECTOR_SECRET: ${COLLECTOR_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      init-db:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: collector
+    command: >
+      python3 rtsp_metadata_temp_collector.py
+      --from-db
+      --interval-seconds 60
+      --api-url http://app:3000/api/temperature-readings
+      --roi A
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/thermal_monitor"
+      CAMERA_ENCRYPTION_KEY: ${CAMERA_ENCRYPTION_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
 
 volumes:
   pgdata:

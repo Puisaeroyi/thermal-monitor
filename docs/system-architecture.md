@@ -724,6 +724,46 @@ return <CameraGrid cameras={data} />;
 - **No API key validation** — Trusted ingestion source
 - **No CORS restrictions** — Localhost only
 
+### Camera Password Encryption
+
+Camera credentials are encrypted at rest using AES-256-GCM:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Camera Password Encryption Flow                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  UI Form (plaintext)                                        │
+│       ↓                                                      │
+│  API Route (POST /api/cameras)                              │
+│       ↓                                                      │
+│  camera-service.createCamera()                              │
+│       ↓                                                      │
+│  encryptPassword(plaintext)  [src/lib/crypto-utils.ts]      │
+│       ↓ AES-256-GCM                                          │
+│  enc:v1:<iv>:<authTag>:<ciphertext>                         │
+│       ↓                                                      │
+│  PostgreSQL (encrypted at rest)                             │
+│                                                              │
+│  ─────────────────────────────────────────────────────────  │
+│                                                              │
+│  Python Collector (--from-db)                               │
+│       ↓                                                      │
+│  decryptPassword(stored, key)  [rtsp_metadata_temp_*.py]    │
+│       ↓ AES-256-GCM decrypt                                  │
+│  plaintext password (in memory only)                        │
+│       ↓                                                      │
+│  RTSP camera authentication                                 │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key Points:**
+- Passwords masked in list API responses (`"********"`)
+- Edit form only updates password if field is changed
+- Migration script (`scripts/encrypt-existing-passwords.ts`) for existing passwords
+- Python collector uses `psycopg2` + `cryptography` package
+
 ### Future (If Multi-User)
 
 - **LDAP/Active Directory** — User authentication
@@ -736,7 +776,7 @@ return <CameraGrid cameras={data} />;
 
 - **SQL injection prevention** — Prisma parameterized queries
 - **Input validation** — Custom validators on all inputs
-- **No secrets in code** — SMTP credentials via .env.local
+- **No secrets in code** — Encryption key via `.env.local`, gitignored
 
 ---
 

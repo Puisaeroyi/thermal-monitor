@@ -15,6 +15,7 @@ export async function GET() {
         id: g.id,
         name: g.name,
         color: g.color,
+        mapImage: g.mapImage,
         cameraCount: g._count.cameras,
       }))
     );

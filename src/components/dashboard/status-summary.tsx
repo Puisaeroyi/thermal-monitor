@@ -1,10 +1,17 @@
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, CheckCircle, XCircle, Bell } from "lucide-react";
+import { Camera, CheckCircle, XCircle, Bell, BellOff, Activity } from "lucide-react";
 import type { CameraReading } from "@/hooks/use-cameras";
+
+interface AlertStats {
+  total: number;
+  acknowledged: number;
+  unacknowledged: number;
+}
 
 interface StatusSummaryProps {
   cameras: CameraReading[];
-  alertCount?: number;
+  alertStats?: AlertStats;
 }
 
 interface StatCardProps {
@@ -35,38 +42,69 @@ function StatCard({ label, value, icon, description }: StatCardProps) {
   );
 }
 
-/** 4-card summary row: Total, Active, Inactive, Alerts */
-export function StatusSummary({ cameras, alertCount = 0 }: StatusSummaryProps) {
+/** Two-row summary: cameras row + events row */
+export function StatusSummary({ cameras, alertStats }: StatusSummaryProps) {
   const total = cameras.length;
-  const active = cameras.filter((c) => c.status === "ACTIVE").length;
-  const inactive = total - active;
+  const connected = cameras.filter((c) => c.status === "ACTIVE").length;
+  const disconnected = total - connected;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard
-        label="Total Cameras"
-        value={total}
-        icon={<Camera className="size-4" />}
-        description="registered devices"
-      />
-      <StatCard
-        label="Active"
-        value={active}
-        icon={<CheckCircle className="size-4 text-green-500" />}
-        description="reporting normally"
-      />
-      <StatCard
-        label="Inactive"
-        value={inactive}
-        icon={<XCircle className="size-4 text-gray-400" />}
-        description="offline or disabled"
-      />
-      <StatCard
-        label="Alerts Active"
-        value={alertCount}
-        icon={<Bell className="size-4 text-red-500" />}
-        description="unacknowledged"
-      />
+    <div className="flex flex-col gap-6">
+      {/* Section 1: Camera Overview */}
+      <Link href="/cameras" className="flex flex-col gap-2 group">
+        <div className="flex items-center gap-2">
+          <Camera className="size-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">Camera Overview</span>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard
+            label="Total Cameras"
+            value={total}
+            icon={<Camera className="size-4" />}
+            description="registered devices"
+          />
+          <StatCard
+            label="Connected"
+            value={connected}
+            icon={<CheckCircle className="size-4 text-green-500" />}
+            description="reporting normally"
+          />
+          <StatCard
+            label="Disconnected"
+            value={disconnected}
+            icon={<XCircle className="size-4 text-gray-400" />}
+            description="offline or disabled"
+          />
+        </div>
+      </Link>
+
+      {/* Section 2: Alert Events */}
+      <Link href="/alerts" className="flex flex-col gap-2 group">
+        <div className="flex items-center gap-2">
+          <Bell className="size-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">Alert Events</span>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <StatCard
+            label="Total Events"
+            value={alertStats?.total ?? 0}
+            icon={<Activity className="size-4 text-blue-500" />}
+            description="all alert events"
+          />
+          <StatCard
+            label="Acknowledged"
+            value={alertStats?.acknowledged ?? 0}
+            icon={<BellOff className="size-4 text-green-500" />}
+            description="reviewed and cleared"
+          />
+          <StatCard
+            label="Unacknowledged"
+            value={alertStats?.unacknowledged ?? 0}
+            icon={<Bell className="size-4 text-red-500" />}
+            description="requires attention"
+          />
+        </div>
+      </Link>
     </div>
   );
 }

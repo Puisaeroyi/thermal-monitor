@@ -16,12 +16,12 @@ export function CameraInfoHeader({ camera, latestReading }: CameraInfoHeaderProp
   const { unit } = useTempUnit();
   const lastUpdated = latestReading
     ? new Date(latestReading.timestamp).toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "No data";
 
   return (

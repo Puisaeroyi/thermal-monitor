@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listAlerts, getUnacknowledgedCount } from "@/services/alert-service";
+import {
+  listAlerts,
+  getUnacknowledgedCount,
+  getAlertStats,
+  type AlertTypeFilter,
+  type AlertTimestampSort,
+} from "@/services/alert-service";
+
+export const dynamic = "force-dynamic";
+
+const ALLOWED_TYPE_FILTERS: AlertTypeFilter[] = [
+  "TEMPERATURE",
+  "GAP",
+  "MAX_TEMPERATURE",
+  "INCREASE_TEMPERATURE",
+];
+
+const ALLOWED_TIMESTAMP_SORTS: AlertTimestampSort[] = ["asc", "desc"];
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,8 +28,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(result);
     }
 
+    // Support ?stats=true for dashboard summary
+    if (searchParams.get("stats") === "true") {
+      const result = await getAlertStats();
+      return NextResponse.json(result);
+    }
+
     const cameraId = searchParams.get("cameraId") ?? undefined;
-    const type = searchParams.get("type") as "TEMPERATURE" | "GAP" | null;
+    const typeParam = searchParams.get("type");
+    const type = typeParam
+      ? (typeParam as AlertTypeFilter)
+      : undefined;
     const acknowledgedParam = searchParams.get("acknowledged");
     const acknowledged =
       acknowledgedParam === "true"
@@ -32,6 +58,10 @@ export async function GET(req: NextRequest) {
     const limit = searchParams.get("limit")
       ? parseInt(searchParams.get("limit")!, 10)
       : undefined;
+    const sortParam = searchParams.get("sort");
+    const sort = sortParam
+      ? (sortParam as AlertTimestampSort)
+      : undefined;
 
     if (from && isNaN(from.getTime())) {
       return NextResponse.json({ error: "Invalid 'from' date" }, { status: 400 });
@@ -39,13 +69,20 @@ export async function GET(req: NextRequest) {
     if (to && isNaN(to.getTime())) {
       return NextResponse.json({ error: "Invalid 'to' date" }, { status: 400 });
     }
+    if (type && !ALLOWED_TYPE_FILTERS.includes(type)) {
+      return NextResponse.json({ error: "Invalid 'type' value" }, { status: 400 });
+    }
+    if (sort && !ALLOWED_TIMESTAMP_SORTS.includes(sort)) {
+      return NextResponse.json({ error: "Invalid 'sort' value" }, { status: 400 });
+    }
 
     const result = await listAlerts({
       cameraId,
-      type: type ?? undefined,
+      type,
       acknowledged,
       from,
       to,
+      sort,
       page,
       limit,
     });

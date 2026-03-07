@@ -14,6 +14,13 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, X, Loader2, Lock } from "lucide-react";
 
+/**
+ * Generate a unique ID (fallback for crypto.randomUUID in browsers).
+ */
+function generateId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export type AuthType = "none" | "basic" | "digest";
 
 export interface AuthConfig {
@@ -66,10 +73,10 @@ export function RequestForm({ onSubmit, loading, initialValues }: RequestFormPro
     const headers = initialValues?.headers ?? {};
     const entries = Object.entries(headers);
     if (entries.length === 0) {
-      return [{ id: crypto.randomUUID(), key: "", value: "" }];
+      return [{ id: generateId(), key: "", value: "" }];
     }
     return entries.map(([key, value]) => ({
-      id: crypto.randomUUID(),
+      id: generateId(),
       key,
       value,
     }));
@@ -99,7 +106,7 @@ export function RequestForm({ onSubmit, loading, initialValues }: RequestFormPro
   };
 
   const addHeaderRow = useCallback(() => {
-    setHeaderRows(prev => [...prev, { id: crypto.randomUUID(), key: "", value: "" }]);
+    setHeaderRows(prev => [...prev, { id: generateId(), key: "", value: "" }]);
   }, []);
 
   const removeHeaderRow = useCallback((id: string) => {

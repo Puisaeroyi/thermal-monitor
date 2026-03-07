@@ -23,18 +23,36 @@ enum GapDirection {
   BOTH
 }
 
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String
+  role        String   @default("operator")
+  firstLogin  Boolean  @default(true) @map("first_login")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("users")
+}
+
 model Camera {
-  cameraId  String       @id @map("camera_id")
-  name      String
-  location  String
-  status    CameraStatus @default(ACTIVE)
-  groupId   String?      @map("group_id")
-  group     Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  cameraId   String       @id @map("camera_id")
+  name       String
+  location   String
+  status     CameraStatus @default(ACTIVE)
+  groupId    String?      @map("group_id")
+  ipAddress  String?      @map("ip_address")
+  port       Int          @default(80)
+  username   String?
+  password   String?
+  modelName  String?      @map("model_name")
+  group      Group?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
 
-  readings Reading[]
-  alerts   Alert[]
+  readings   Reading[]
+  alerts     Alert[]
+  cameraPins CameraPin[]
 
   @@index([groupId])
   @@map("cameras")
@@ -44,19 +62,23 @@ model Group {
   id        String   @id @default(cuid())
   name      String
   color     String?  @db.Text
+  mapImage  String?  @map("map_image") @db.Text
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
 
-  cameras Camera[]
+  cameras    Camera[]
+  cameraPins CameraPin[]
 
   @@map("groups")
 }
 
 model Reading {
-  id        BigInt   @id @default(autoincrement())
-  cameraId  String   @map("camera_id")
-  celsius   Float    @db.Real
-  timestamp DateTime @db.Timestamptz()
+  id         BigInt   @id @default(autoincrement())
+  cameraId   String   @map("camera_id")
+  celsius    Float    @db.Real
+  maxCelsius Float?   @map("max_celsius") @db.Real
+  minCelsius Float?   @map("min_celsius") @db.Real
+  timestamp  DateTime @db.Timestamptz()
 
   camera Camera @relation(fields: [cameraId], references: [cameraId], onDelete: Cascade)
 
@@ -104,6 +126,7 @@ model Alert {
   message        String
   celsius        Float     @db.Real
   thresholdValue Float?    @map("threshold_value") @db.Real
+  note           String?   @db.Text
   acknowledged   Boolean   @default(false)
   acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz()
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
@@ -113,4 +136,19 @@ model Alert {
   @@index([cameraId, createdAt])
   @@index([acknowledged])
   @@map("alerts")
+}
+
+model CameraPin {
+  id       String @id @default(cuid())
+  groupId  String @map("group_id")
+  cameraId String @map("camera_id")
+  x        Float  @db.Real
+  y        Float  @db.Real
+
+  group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  camera Camera @relation(fields: [cameraId], references: [cameraId], onDelete: Cascade)
+
+  @@unique([groupId, cameraId])
+  @@index([groupId])
+  @@map("camera_pins")
 }

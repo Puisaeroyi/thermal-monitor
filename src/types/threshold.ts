@@ -5,7 +5,6 @@ export interface TemperatureThreshold {
   groupId: string | null;
   minCelsius: number | null;
   maxCelsius: number | null;
-  cooldownMinutes: number;
   notifyEmail: boolean;
   enabled: boolean;
   createdAt: string;
@@ -22,7 +21,6 @@ export interface GapThreshold {
   intervalMinutes: number;
   maxGapCelsius: number;
   direction: GapDirection;
-  cooldownMinutes: number;
   notifyEmail: boolean;
   enabled: boolean;
   createdAt: string;

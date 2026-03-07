@@ -29,7 +29,6 @@ export async function createTemperatureThreshold(
       groupId: input.groupId ?? null,
       minCelsius: input.minCelsius ?? null,
       maxCelsius: input.maxCelsius ?? null,
-      cooldownMinutes: input.cooldownMinutes ?? 5,
       notifyEmail: input.notifyEmail ?? false,
       enabled: input.enabled ?? true,
     },
@@ -53,9 +52,6 @@ export async function updateTemperatureThreshold(
       ...(input.groupId !== undefined && { groupId: input.groupId }),
       ...(input.minCelsius !== undefined && { minCelsius: input.minCelsius }),
       ...(input.maxCelsius !== undefined && { maxCelsius: input.maxCelsius }),
-      ...(input.cooldownMinutes !== undefined && {
-        cooldownMinutes: input.cooldownMinutes,
-      }),
       ...(input.notifyEmail !== undefined && { notifyEmail: input.notifyEmail }),
       ...(input.enabled !== undefined && { enabled: input.enabled }),
     },
@@ -99,7 +95,6 @@ export async function createGapThreshold(input: GapThresholdInput) {
       direction: input.direction
         ? (input.direction as GapDirection)
         : GapDirection.BOTH,
-      cooldownMinutes: input.cooldownMinutes ?? 5,
       notifyEmail: input.notifyEmail ?? false,
       enabled: input.enabled ?? true,
     },
@@ -129,9 +124,6 @@ export async function updateGapThreshold(
       }),
       ...(input.direction !== undefined && {
         direction: input.direction as GapDirection,
-      }),
-      ...(input.cooldownMinutes !== undefined && {
-        cooldownMinutes: input.cooldownMinutes,
       }),
       ...(input.notifyEmail !== undefined && { notifyEmail: input.notifyEmail }),
       ...(input.enabled !== undefined && { enabled: input.enabled }),

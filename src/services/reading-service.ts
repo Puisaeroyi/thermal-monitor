@@ -21,6 +21,7 @@ export interface LatestReading {
   celsius: number;
   maxCelsius: number | null;
   minCelsius: number | null;
+  avgCelsius: number | null;
   timestamp: Date;
 }
 
@@ -115,6 +116,7 @@ export async function getLatestReadings(): Promise<LatestReading[]> {
       celsius: number;
       max_celsius: number | null;
       min_celsius: number | null;
+      avg_celsius: number | null;
       timestamp: Date;
     }>
   >`
@@ -128,10 +130,11 @@ export async function getLatestReadings(): Promise<LatestReading[]> {
       r.celsius,
       r.max_celsius,
       r.min_celsius,
+      r.avg_celsius,
       r.timestamp
     FROM cameras c
     LEFT JOIN LATERAL (
-      SELECT id, celsius, max_celsius, min_celsius, timestamp
+      SELECT id, celsius, max_celsius, min_celsius, avg_celsius, timestamp
       FROM readings
       WHERE camera_id = c.camera_id
       ORDER BY timestamp DESC
@@ -150,6 +153,7 @@ export async function getLatestReadings(): Promise<LatestReading[]> {
     celsius: r.celsius,
     maxCelsius: r.max_celsius,
     minCelsius: r.min_celsius,
+    avgCelsius: r.avg_celsius,
     timestamp: r.timestamp,
   }));
 }

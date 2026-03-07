@@ -75,7 +75,7 @@ Implementation progress and future phases for Thermal Monitor.
 
 **Deliverables:**
 - [x] 14 REST endpoints implemented (cameras, readings, thresholds, alerts, groups, settings)
-- [x] 9 service modules created (reading, camera, alert, threshold, cache, cooldown, gap-buffer, email)
+- [x] 9 service modules created (reading, camera, alert, threshold, cache, gap-buffer, email)
 - [x] Input validation (custom ValidationError class)
 - [x] Error handling (try-catch in all routes)
 - [x] Prisma singleton (lib/prisma.ts)
@@ -192,7 +192,7 @@ Implementation progress and future phases for Thermal Monitor.
 **Services & Hooks:**
 - alert-evaluation-service (threshold check on ingest)
 - threshold-cache (in-memory lookup)
-- cooldown-manager (prevent spam)
+- hasUncheckedAlert (state-based suppression)
 - gap-ring-buffer (rate-of-change detection)
 - use-alerts hook (fetch + filter)
 
@@ -386,7 +386,7 @@ Implementation progress and future phases for Thermal Monitor.
 
 **Features:**
 - [ ] Server-Sent Events (replace polling)
-- [ ] Redis caching (threshold-cache, cooldown)
+- [ ] Redis caching (threshold-cache)
 - [ ] Message queue (RabbitMQ/Kafka) for alerts
 - [ ] Database read replicas
 - [ ] Readings table partitioning (by month)

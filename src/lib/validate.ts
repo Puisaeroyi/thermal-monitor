@@ -27,7 +27,6 @@ export interface TemperatureThresholdInput {
   groupId?: string | null;
   minCelsius?: number | null;
   maxCelsius?: number | null;
-  cooldownMinutes?: number;
   notifyEmail?: boolean;
   enabled?: boolean;
 }
@@ -39,7 +38,6 @@ export interface GapThresholdInput {
   intervalMinutes: number;
   maxGapCelsius: number;
   direction?: "RISE" | "DROP" | "BOTH";
-  cooldownMinutes?: number;
   notifyEmail?: boolean;
   enabled?: boolean;
 }
@@ -161,6 +159,8 @@ export interface TemperatureReadingInput {
   host: string;
   roi: string;
   max_temperature: number | null;
+  min_temperature: number | null;
+  avg_temperature: number | null;
   unit: string;
   status?: string;
 }
@@ -187,7 +187,7 @@ export function validateTemperatureReading(data: unknown): TemperatureReadingInp
   }
 
   // Temperature values can be null (camera failure)
-  for (const key of ["max_temperature"] as const) {
+  for (const key of ["max_temperature", "min_temperature", "avg_temperature"] as const) {
     if (d[key] !== null && d[key] !== undefined && typeof d[key] !== "number") {
       throw new ValidationError(`${key} must be a number or null`);
     }
@@ -199,6 +199,8 @@ export function validateTemperatureReading(data: unknown): TemperatureReadingInp
     host: d.host as string,
     roi: (d.roi as string) || "UNKNOWN",
     max_temperature: (d.max_temperature as number | null) ?? null,
+    min_temperature: (d.min_temperature as number | null) ?? null,
+    avg_temperature: (d.avg_temperature as number | null) ?? null,
     unit: (d.unit as string) || "Fahrenheit",
     status: d.status as string | undefined,
   };
@@ -241,9 +243,6 @@ export function validateTemperatureThresholdInput(
   if (d.maxCelsius !== undefined && d.maxCelsius !== null && typeof d.maxCelsius !== "number") {
     throw new ValidationError("maxCelsius must be a number or null");
   }
-  if (d.cooldownMinutes !== undefined && (typeof d.cooldownMinutes !== "number" || d.cooldownMinutes < 0)) {
-    throw new ValidationError("cooldownMinutes must be a non-negative number");
-  }
 
   return {
     name: d.name as string,
@@ -251,7 +250,6 @@ export function validateTemperatureThresholdInput(
     groupId: d.groupId as string | null | undefined,
     minCelsius: d.minCelsius as number | null | undefined,
     maxCelsius: d.maxCelsius as number | null | undefined,
-    cooldownMinutes: d.cooldownMinutes as number | undefined,
     notifyEmail: d.notifyEmail as boolean | undefined,
     enabled: d.enabled as boolean | undefined,
   };
@@ -288,7 +286,6 @@ export function validateGapThresholdInput(data: unknown): GapThresholdInput {
     intervalMinutes: d.intervalMinutes as number,
     maxGapCelsius: d.maxGapCelsius as number,
     direction: d.direction as "RISE" | "DROP" | "BOTH" | undefined,
-    cooldownMinutes: d.cooldownMinutes as number | undefined,
     notifyEmail: d.notifyEmail as boolean | undefined,
     enabled: d.enabled as boolean | undefined,
   };

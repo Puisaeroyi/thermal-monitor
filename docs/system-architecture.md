@@ -51,7 +51,6 @@ Real-time thermal camera monitoring with synchronous alert evaluation on reading
 │  │  - alert-evaluation-service (threshold check)       │  │
 │  │  - threshold-service (threshold CRUD)               │  │
 │  │  - threshold-cache (Redis-backed cache)             │  │
-│  │  - cooldown-manager (Redis TTL keys)                │  │
 │  │  - gap-ring-buffer (rate-of-change detection)       │  │
 │  │  - email-service (Nodemailer)                       │  │
 │  └──────────────────────────────────────────────────────┘  │
@@ -60,7 +59,6 @@ Real-time thermal camera monitoring with synchronous alert evaluation on reading
 │  │            Redis 7 (Cache + Pub/Sub)                 │  │
 │  │  - thresholds:temp — cached temp thresholds (60s)   │  │
 │  │  - thresholds:gap — cached gap thresholds (60s)     │  │
-│  │  - cooldown:{id}:{cameraId} — TTL keys for cooldowns│  │
 │  │  - readings:latest — pub channel for SSE broadcast  │  │
 │  │  - alerts:new — pub channel for alert broadcast     │  │
 │  │  - thresholds:invalidate — pub for cache sync       │  │
@@ -233,10 +231,9 @@ External System (Thermal Camera Network)
         │  │  │  ├─ Is celsius < minCelsius? → danger
         │  │  │  └─ Is celsius > 90% of max? → warning
         │  │  └─ If breach:
-        │  │     ├─ Check cooldown (cooldown-manager.isOnCooldown)
-        │  │     ├─ If !onCooldown:
-        │  │     │  ├─ Create Alert record (type=TEMPERATURE)
-        │  │     │  ├─ Start cooldown timer
+        │  │     ├─ Check for unchecked alert (hasUncheckedAlert)
+        │  │     ├─ If no unchecked alert exists:
+        │  │     │  ├─ Create Alert record (type=TEMPERATURE, with thresholdId)
         │  │     │  └─ Queue email notification (async, non-blocking)
         │  │
         │  ├─ [2c] Check GAP threshold (rate of change)
@@ -249,9 +246,8 @@ External System (Thermal Camera Network)
         │  │  │  ├─ Is |Δcelsius| > maxGapCelsius?
         │  │  │  │  ├─ And direction matches (RISE/DROP/BOTH)?
         │  │  │  │  └─ → gap threshold breached
-        │  │  └─ If breach + !onCooldown:
-        │  │     ├─ Create Alert record (type=GAP)
-        │  │     ├─ Start cooldown timer
+        │  │  └─ If breach + no unchecked alert:
+        │  │     ├─ Create Alert record (type=GAP, with thresholdId)
         │  │     └─ Queue email notification (async, non-blocking)
         │
         └─ [3] Email queue (async, non-blocking)
@@ -324,7 +320,6 @@ CREATE TABLE temperature_thresholds (
   group_id TEXT REFERENCES groups(id) ON DELETE CASCADE,
   min_celsius REAL,
   max_celsius REAL,
-  cooldown_minutes INT DEFAULT 5,
   notify_email BOOLEAN DEFAULT false,
   enabled BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -344,7 +339,6 @@ CREATE TABLE gap_thresholds (
   interval_minutes INT NOT NULL,
   max_gap_celsius REAL NOT NULL,
   direction gap_direction DEFAULT 'BOTH',
-  cooldown_minutes INT DEFAULT 5,
   notify_email BOOLEAN DEFAULT false,
   enabled BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -359,6 +353,7 @@ CREATE TABLE gap_thresholds (
 CREATE TABLE alerts (
   id TEXT PRIMARY KEY,
   camera_id TEXT NOT NULL REFERENCES cameras(camera_id) ON DELETE CASCADE,
+  threshold_id TEXT,  -- References temperature_thresholds or gap_thresholds
   type alert_type NOT NULL,
   message TEXT NOT NULL,
   celsius REAL NOT NULL,
@@ -369,6 +364,7 @@ CREATE TABLE alerts (
 );
 CREATE INDEX idx_alerts_camera_created ON alerts(camera_id, created_at DESC);
 CREATE INDEX idx_alerts_acknowledged ON alerts(acknowledged);
+CREATE INDEX idx_alerts_threshold_camera_ack ON alerts(threshold_id, camera_id, acknowledged);  -- For fast unchecked-alert lookup
 ```
 
 ---
@@ -450,7 +446,7 @@ reading-service
   └─ alert-evaluation-service (evaluate on ingest)
      ├─ threshold-service (CRUD thresholds)
      ├─ threshold-cache (in-memory lookup)
-     ├─ cooldown-manager (track cooldown)
+     ├─ hasUncheckedAlert (state-based suppression)
      ├─ gap-ring-buffer (detect rate of change)
      └─ email-service (queue notifications)
 
@@ -465,9 +461,6 @@ threshold-service
 
 threshold-cache
   └─ threshold-service
-
-cooldown-manager
-  └─ (in-memory Map, no DB)
 
 gap-ring-buffer
   └─ (in-memory Map, no DB)
@@ -491,7 +484,6 @@ API routes
 - **Prisma Client** (singleton) — DB connection pool
 - **Threshold Cache** — In-memory Map of thresholds
 - **Ring Buffers** — In-memory Map<cameraId, CircularBuffer>
-- **Cooldown Timers** — In-memory Map<cameraId, Map<thresholdId, Date>>
 
 ### Client State (React)
 
@@ -578,29 +570,26 @@ export function getBuffer(cameraId: string) {
 // ~1KB per camera, 50 cameras = 50KB total
 ```
 
-### Cooldown Cache (Redis TTL Keys)
+### State-Based Suppression (Database Query)
 
-**Why:** Prevent alert spam, survive restarts, auto-expire without cleanup
+**Why:** Prevent alert spam while giving operators explicit control, no arbitrary timeouts
 
-**When:** Set after alert creation, checked before next alert
+**When:** Checked before creating alert, suppressed while unchecked alert exists for same threshold+camera
 
 ```typescript
-// src/services/cooldown-manager.ts
-export const cooldownManager = {
-  async canAlert(thresholdId: string, cameraId: string, cooldownMinutes: number): Promise<boolean> {
-    const key = `cooldown:${thresholdId}:${cameraId}`;
-    const exists = await redis.exists(key);
-    return !exists;  // Can alert if key expired
-  },
-
-  async recordAlert(thresholdId: string, cameraId: string, cooldownMinutes: number): Promise<void> {
-    const key = `cooldown:${thresholdId}:${cameraId}`;
-    await redis.setex(key, cooldownMinutes * 60, "1");  // Auto-expires
-  },
-};
+// src/services/alert-service.ts
+export async function hasUncheckedAlert(thresholdId: string, cameraId: string): Promise<boolean> {
+  const count = await prisma.alert.count({
+    where: { thresholdId, cameraId, acknowledged: false },
+    take: 1,  // Early exit optimization
+  });
+  return count > 0;
+}
 ```
 
-**Graceful Fallback:** If Redis unavailable, allows all alerts (fails open).
+**Implementation:** Uses composite index `(thresholdId, cameraId, acknowledged)` for sub-millisecond lookup.
+
+**Graceful Fallback:** N/A — query is database-backed, always available.
 
 ### Dashboard Layout (localStorage)
 
@@ -705,7 +694,7 @@ return <CameraGrid cameras={data} />;
 
 **Phase 2 (Future):**
 - PostgreSQL with read replicas
-- Redis for distributed caching (threshold-cache, cooldown)
+- Redis for distributed caching (threshold-cache, SSE pub/sub)
 - Server-Sent Events (SSE) for <2s latency
 
 **Phase 3 (Future):**

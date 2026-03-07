@@ -40,12 +40,12 @@ export async function GET(req: NextRequest) {
     }
 
     // Build CSV
-    const csvHeader = "Camera ID,Camera Name,Location,Timestamp,Celsius,Max Celsius,Min Celsius";
+    const csvHeader = "Camera ID,Camera Name,Location,Timestamp,Celsius,Max Celsius,Min Celsius,Avg Celsius";
     const csvRows = readings.map((r) => {
       const ts = r.timestamp.toISOString();
       const name = safeCsvCell(r.camera.name);
       const location = safeCsvCell(r.camera.location);
-      return `${safeCsvCell(r.cameraId)},${name},${location},${ts},${r.celsius},${r.maxCelsius ?? ""},${r.minCelsius ?? ""}`;
+      return `${safeCsvCell(r.cameraId)},${name},${location},${ts},${r.celsius},${r.maxCelsius ?? ""},${r.minCelsius ?? ""},${r.avgCelsius ?? ""}`;
     });
 
     const csv = [csvHeader, ...csvRows].join("\n");

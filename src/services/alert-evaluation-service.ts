@@ -1,8 +1,7 @@
 import { GapDirection } from "@/generated/prisma/client";
-import { cooldownManager } from "@/services/cooldown-manager";
 import { thresholdCache } from "@/services/threshold-cache";
 import { gapRingBuffer } from "@/services/gap-ring-buffer";
-import { createAlert } from "@/services/alert-service";
+import { createAlert, hasUncheckedAlert } from "@/services/alert-service";
 import type {
   TemperatureThreshold,
   GapThreshold,
@@ -10,7 +9,7 @@ import type {
 
 /**
  * Evaluate a single reading against all enabled thresholds.
- * Fires alerts where conditions are breached and cooldowns allow.
+ * Fires alerts where conditions are breached and no unchecked alert exists.
  * Never throws; errors are logged and swallowed.
  */
 export async function evaluateReading(
@@ -34,7 +33,7 @@ export async function evaluateReading(
       const breachMax = t.maxCelsius !== null && celsius > t.maxCelsius;
 
       if (!breachMin && !breachMax) continue;
-      if (!(await cooldownManager.canAlert(t.id, cameraId))) continue;
+      if (await hasUncheckedAlert(t.id, cameraId)) continue;
 
       const limit = breachMax ? t.maxCelsius : t.minCelsius;
       const message = breachMax
@@ -50,8 +49,6 @@ export async function evaluateReading(
         notifyEmail: t.notifyEmail,
         thresholdId: t.id,
       });
-
-      await cooldownManager.recordAlert(t.id, cameraId, t.cooldownMinutes);
     }
 
     gapRingBuffer.push(cameraId, timestamp, celsius);
@@ -81,7 +78,7 @@ export async function evaluateReading(
         (t.direction === GapDirection.DROP && isDrop);
 
       if (!directionMatches) continue;
-      if (!(await cooldownManager.canAlert(t.id, cameraId))) continue;
+      if (await hasUncheckedAlert(t.id, cameraId)) continue;
 
       const message = isRise
         ? `Rise: ${absDelta.toFixed(1)}C/${t.intervalMinutes}m > ${t.maxGapCelsius.toFixed(1)}C (${t.name})`
@@ -96,8 +93,6 @@ export async function evaluateReading(
         notifyEmail: t.notifyEmail,
         thresholdId: t.id,
       });
-
-      await cooldownManager.recordAlert(t.id, cameraId, t.cooldownMinutes);
     }
   } catch (err) {
     console.error("[alert-evaluation-service] Error evaluating reading:", err);

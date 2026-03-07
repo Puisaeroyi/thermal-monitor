@@ -88,6 +88,7 @@ export async function createAlert(input: CreateAlertInput) {
   const alert = await prisma.alert.create({
     data: {
       cameraId: input.cameraId,
+      thresholdId: input.thresholdId ?? null,
       type: input.type as AlertType,
       message: input.message,
       celsius: input.celsius,
@@ -204,4 +205,13 @@ export async function getAlertStats() {
     prisma.alert.count({ where: { acknowledged: true } }),
   ]);
   return { total, acknowledged, unacknowledged: total - acknowledged };
+}
+
+/** Check if an unchecked alert exists for this threshold+camera pair. */
+export async function hasUncheckedAlert(thresholdId: string, cameraId: string): Promise<boolean> {
+  const count = await prisma.alert.count({
+    where: { thresholdId, cameraId, acknowledged: false },
+    take: 1,
+  });
+  return count > 0;
 }

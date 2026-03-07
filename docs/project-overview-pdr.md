@@ -14,7 +14,7 @@ Enable real-time temperature monitoring of distributed thermal cameras with mini
 - **Centralized view** — All cameras visible on one dashboard
 - **Fast response** — 5-second latency from sensor to alert
 - **Customizable** — Drag-drop dashboard layout, per-camera thresholds
-- **Smart alerts** — Threshold + gap detection with cooldown to prevent spam
+- **Smart alerts** — Threshold + gap detection with state-based suppression (checked/unchecked)
 - **Dark mode** — Works 24/7 in any lighting
 - **Local deployment** — No cloud, runs on-premise
 

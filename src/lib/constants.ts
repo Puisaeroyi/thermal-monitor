@@ -24,7 +24,6 @@ export const ALERTS_PAGE_SIZE = 25;
 
 /** Time ranges for charts */
 export const TIME_RANGES = [
-  { label: "15m", minutes: 15 },
   { label: "30m", minutes: 30 },
   { label: "1h", minutes: 60 },
   { label: "6h", minutes: 360 },

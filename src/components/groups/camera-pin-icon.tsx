@@ -12,6 +12,7 @@ interface CameraPinIconProps {
   x: number;
   y: number;
   onDelete: (pinId: string) => void;
+  readOnly?: boolean;
 }
 
 export function CameraPinIcon({
@@ -22,6 +23,7 @@ export function CameraPinIcon({
   x,
   y,
   onDelete,
+  readOnly = false,
 }: CameraPinIconProps) {
   const router = useRouter();
   const [hovered, setHovered] = useState(false);
@@ -34,8 +36,8 @@ export function CameraPinIcon({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Delete button */}
-      {hovered && (
+      {/* Delete button — hidden for read-only users */}
+      {hovered && !readOnly && (
         <button
           className="absolute -top-2 -right-2 z-20 bg-destructive text-destructive-foreground rounded-full p-0.5 hover:scale-110 transition-transform"
           onClick={(e) => {

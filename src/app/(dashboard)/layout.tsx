@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/header";
+import { RoleGuard } from "@/components/layout/role-guard";
 
 export default function DashboardLayout({
   children,
@@ -11,7 +12,7 @@ export default function DashboardLayout({
       <Header />
 
       <main className="flex-1 p-6 bg-muted/40">
-        {children}
+        <RoleGuard>{children}</RoleGuard>
       </main>
 
     </div>

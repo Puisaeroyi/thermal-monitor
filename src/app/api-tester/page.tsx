@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUserRole, isWriteRole } from "@/hooks/use-user-role";
 import { RequestForm, ProxyRequest } from "@/components/api-tester/request-form";
 import { ResponseViewer, ProxyResponse } from "@/components/api-tester/response-viewer";
 import { RequestHistory } from "@/components/api-tester/request-history";
@@ -8,6 +10,15 @@ import { useRequestHistory, HistoryEntry } from "@/hooks/use-request-history";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function ApiTesterPage() {
+  const role = useUserRole();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (role && !isWriteRole(role)) {
+      router.replace("/");
+    }
+  }, [role, router]);
+
   const [response, setResponse] = useState<ProxyResponse | null>(null);
   const [error, setError] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -83,6 +94,8 @@ export default function ApiTesterPage() {
     },
     []
   );
+
+  if (role && !isWriteRole(role)) return null;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

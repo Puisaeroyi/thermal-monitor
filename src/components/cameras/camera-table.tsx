@@ -24,10 +24,11 @@ interface CameraTableProps {
   onEdit: (camera: Camera) => void;
   onDelete: (cameraId: string) => void;
   onRefresh: () => void;
+  canWrite?: boolean;
 }
 
 /** Table listing all cameras with action buttons. */
-export function CameraTable({ cameras, onEdit, onDelete, onRefresh }: CameraTableProps) {
+export function CameraTable({ cameras, onEdit, onDelete, onRefresh, canWrite = true }: CameraTableProps) {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncResults, setSyncResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
 
@@ -131,16 +132,20 @@ export function CameraTable({ cameras, onEdit, onDelete, onRefresh }: CameraTabl
                     Sync
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => onEdit(cam)}>
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => onDelete(cam.cameraId)}
-                >
-                  Delete
-                </Button>
+                {canWrite && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => onEdit(cam)}>
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => onDelete(cam.cameraId)}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                )}
               </div>
             </TableCell>
           </TableRow>

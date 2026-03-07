@@ -1059,11 +1059,29 @@ def run_collect_loop(
     api_url: Optional[str] = None,
     api_secret: Optional[str] = None,
     roi_filter: Optional[str] = None,
+    db_url: Optional[str] = None,
+    db_enc_key: str = "",
 ) -> None:
     next_tick = time.monotonic()
 
     while True:
-        log(f"\n=== RTSP snapshot cycle started at {utc_now_iso()} ===")
+        # Auto-reload cameras from DB each cycle (picks up new/removed cameras)
+        if db_url:
+            try:
+                new_cameras = load_cameras_from_db(db_url, db_enc_key)
+                old_hosts = {c.host for c in cameras}
+                new_hosts = {c.host for c in new_cameras}
+                added = new_hosts - old_hosts
+                removed = old_hosts - new_hosts
+                if added:
+                    log(f"[reload] {len(added)} camera(s) added: {added}")
+                if removed:
+                    log(f"[reload] {len(removed)} camera(s) removed: {removed}")
+                cameras = new_cameras
+            except Exception as exc:
+                log(f"[reload] DB query failed, using previous list ({len(cameras)} cameras): {exc}")
+
+        log(f"\n=== RTSP snapshot cycle started at {utc_now_iso()} ({len(cameras)} cameras) ===")
         all_payloads: List[Dict[str, Any]] = []
 
         with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
@@ -1173,19 +1191,19 @@ def main() -> None:
     args = parse_args()
 
     # Load cameras from DB or JSON file
+    db_url: Optional[str] = None
+    enc_key = ""
+
     if args.from_db:
-        # Get database URL
         db_url = args.database_url or os.environ.get("DATABASE_URL")
         if not db_url:
             parser_error("--database-url or DATABASE_URL env required with --from-db")
 
-        # Get encryption key
         enc_key = args.encryption_key or os.environ.get("CAMERA_ENCRYPTION_KEY") or ""
 
         cameras = load_cameras_from_db(db_url, enc_key)
-        log(f"Loaded {len(cameras)} active camera(s) from database")
+        log(f"Loaded {len(cameras)} active camera(s) from database (auto-reload enabled)")
     else:
-        # Legacy JSON file mode
         if not args.cameras:
             parser_error("--cameras required when not using --from-db")
         cameras = load_cameras(args.cameras)
@@ -1210,6 +1228,8 @@ def main() -> None:
         api_url=args.api_url,
         api_secret=args.api_secret,
         roi_filter=args.roi,
+        db_url=db_url,
+        db_enc_key=enc_key,
     )
 
 

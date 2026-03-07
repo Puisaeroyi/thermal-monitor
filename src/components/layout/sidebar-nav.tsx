@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Camera,
@@ -12,14 +11,15 @@ import {
   FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useUserRole, isWriteRole } from "@/hooks/use-user-role";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/cameras", label: "Cameras", icon: Camera },
   { href: "/comparison", label: "Comparison", icon: GitCompare },
   { href: "/alerts", label: "Alerts", icon: Bell },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/api-tester", label: "API Tester", icon: FlaskConical },
+  { href: "/settings", label: "Settings", icon: Settings, writeOnly: true },
+  { href: "/api-tester", label: "API Tester", icon: FlaskConical, writeOnly: true },
 ];
 
 interface SidebarNavProps {
@@ -29,31 +29,12 @@ interface SidebarNavProps {
 export function SidebarNav({ onNavigate }: SidebarNavProps) {
 
   const pathname = usePathname();
-  const [role,setRole] = useState("");
+  const role = useUserRole();
+  const canWrite = isWriteRole(role);
 
-  useEffect(()=>{
-
-    const user = localStorage.getItem("user");
-
-    if(user){
-      const parsed = JSON.parse(user);
-      setRole(parsed.role);
-    }
-
-  },[]);
-
-  // filter menu theo role
-  const filteredLinks = NAV_LINKS.filter((link)=>{
-
-    if(role === "operator"){
-      return (
-        link.href === "/dashboard" ||
-        link.href === "/cameras" ||
-        link.href === "/alerts"
-      );
-    }
-
-    return true; // manager & admin full access
+  const filteredLinks = NAV_LINKS.filter((link) => {
+    if (link.writeOnly && !canWrite) return false;
+    return true;
   });
 
   return (
